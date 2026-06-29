@@ -1,0 +1,24 @@
+# Залежності
+node_modules/
+
+# Збірка
+dist/
+*.local
+
+# Логи
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Кеш / службові файли
+.DS_Store
+tsconfig.tsbuildinfo
+
+# IDE / редактори
+.idea/
+.vscode/
+
+# Локальні налаштування інструментів
+.claude/
