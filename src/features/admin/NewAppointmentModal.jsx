@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Modal } from "@/components/ui";
-import { services, priceOf } from "@/data";
+import { services } from "@/data";
 import { uah } from "@/utils/format";
 import { useI18n } from "@/i18n";
-import { addAppointment, getClients, addClient } from "./adminStore";
+import { addAppointment, getClients } from "./adminApi";
 
 const sources = ["telegram", "site", "phone"];
 
@@ -14,7 +14,16 @@ const inputCls =
 // (використовується з календаря — клік по даті).
 export function NewAppointmentModal({ open, onClose, onCreated, defaultDate = "" }) {
   const { t } = useI18n();
-  const clients = open ? getClients() : [];
+  const [clients, setClients] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Список клієнтів тягнемо щоразу при відкритті форми.
+  useEffect(() => {
+    if (!open) return;
+    getClients()
+      .then(setClients)
+      .catch(() => setClients([]));
+  }, [open]);
 
   const [clientId, setClientId] = useState("");
   const [newName, setNewName] = useState("");
@@ -48,43 +57,35 @@ export function NewAppointmentModal({ open, onClose, onCreated, defaultDate = ""
   const valid =
     serviceId && date && time && (isNewClient ? newName.trim() : clientId);
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
-    if (!valid) {
-      setError(true);
+    if (!valid || submitting) {
+      if (!valid) setError(true);
       return;
     }
 
-    let clientName;
-    let cid;
+    // Ціну й тривалість порахує сервер. Новий клієнт створюється там само.
+    const payload = { serviceId, date: `${date}T${time}:00`, status, source };
     if (isNewClient) {
-      const c = addClient({
-        name: newName.trim(),
-        phone: newPhone.trim(),
-        telegram: newTelegram.trim() || undefined,
-      });
-      clientName = c.name;
-      cid = c.id;
+      payload.clientName = newName.trim();
+      payload.phone = newPhone.trim() || undefined;
+      payload.telegram = newTelegram.trim() || undefined;
     } else {
-      const c = getClients().find((x) => x.id === clientId);
-      clientName = c.name;
-      cid = c.id;
+      const c = clients.find((x) => x.id === clientId);
+      payload.clientId = clientId;
+      payload.clientName = c?.name ?? "";
     }
 
-    const svc = services.find((s) => s.id === serviceId);
-    addAppointment({
-      clientId: cid,
-      clientName,
-      serviceId,
-      date: `${date}T${time}:00`,
-      durationMin: svc.durationMin,
-      price: priceOf(serviceId),
-      status,
-      source,
-    });
-
-    onCreated();
-    onClose();
+    setSubmitting(true);
+    try {
+      await addAppointment(payload);
+      await onCreated();
+      onClose();
+    } catch {
+      setError(true);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -215,8 +216,8 @@ export function NewAppointmentModal({ open, onClose, onCreated, defaultDate = ""
           <Button type="button" variant="outline" onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button type="submit" disabled={!valid}>
-            {t("apptForm.create")}
+          <Button type="submit" disabled={!valid || submitting}>
+            {submitting ? t("reviews.submitting") : t("apptForm.create")}
           </Button>
         </div>
       </form>

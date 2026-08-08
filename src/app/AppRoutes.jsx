@@ -14,6 +14,7 @@ import Cabinet from "@/pages/public/Cabinet";
 import Dashboard from "@/pages/admin/Dashboard";
 import Clients from "@/pages/admin/Clients";
 import Appointments from "@/pages/admin/Appointments";
+import Pending from "@/pages/admin/Pending";
 import Calendar from "@/pages/admin/Calendar";
 import Settings from "@/pages/admin/Settings";
 
@@ -40,6 +41,7 @@ export default function AppRoutes() {
           <Route index element={<Dashboard />} />
           <Route path="clients" element={<Clients />} />
           <Route path="appointments" element={<Appointments />} />
+          <Route path="pending" element={<Pending />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="settings" element={<Settings />} />
         </Route>

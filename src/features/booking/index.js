@@ -1,1 +1,6 @@
-export { getBookings, addBooking, cancelBooking } from "./bookingStore";
+export {
+  getAvailability,
+  createBooking,
+  getMyBookings,
+  cancelBooking,
+} from "./bookingApi";

@@ -24,32 +24,36 @@ export default function PublicLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const linkCls = ({ isActive }) =>
-    `rounded-lg px-3 py-2 text-sm font-medium ${
-      isActive ? "text-brand-700" : "text-muted hover:text-ink"
+    `rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+      isActive
+        ? "bg-brand-50 text-brand-700"
+        : "text-muted hover:bg-black/5 hover:text-ink"
     }`;
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
-      <header className="sticky top-0 z-20 border-b border-border bg-surface/80 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-2 px-4 sm:px-6">
+      <header className="sticky top-0 z-20 border-b border-border/70 bg-bg/70 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6">
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="grid size-9 place-items-center rounded-lg text-muted hover:bg-black/5 md:hidden"
+              className="grid size-9 place-items-center rounded-full text-muted hover:bg-black/5 md:hidden"
               aria-label={t(menuOpen ? "common.closeMenu" : "common.openMenu")}
             >
               {menuOpen ? <CloseIcon width={22} height={22} /> : <MenuIcon width={22} height={22} />}
             </button>
             <Link to="/" className="flex shrink-0 items-center gap-2.5">
-              <div className="grid size-9 place-items-center rounded-lg bg-brand-500 text-white">
+              <div className="grid size-9 place-items-center rounded-xl bg-brand-500 text-white shadow-[var(--shadow-brand)]">
                 <MedicalIcon width={20} height={20} />
               </div>
-              <span className="hidden font-semibold sm:inline">{CLINIC.name}</span>
+              <span className="hidden text-[17px] font-semibold tracking-tight sm:inline">
+                {CLINIC.name}
+              </span>
             </Link>
           </div>
 
           {/* Десктоп-навігація */}
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 rounded-full border border-border bg-surface/70 p-1 shadow-[var(--shadow-soft)] md:flex">
             {navItems.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end} className={linkCls}>
                 {t(n.tKey)}
@@ -82,7 +86,7 @@ export default function PublicLayout() {
 
         {/* Мобільна навігація (випадайка) */}
         {menuOpen && (
-          <nav className="border-t border-border bg-surface px-4 py-2 md:hidden">
+          <nav className="border-t border-border bg-surface/95 px-4 py-2 backdrop-blur-xl md:hidden">
             {navItems.map((n) => (
               <NavLink
                 key={n.to}
@@ -109,7 +113,7 @@ export default function PublicLayout() {
       </main>
 
       <footer className="border-t border-border bg-surface">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span>{CLINIC.name}</span>
             <span>· {CLINIC.address} ·</span>

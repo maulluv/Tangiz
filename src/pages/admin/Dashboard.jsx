@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowUpIcon, CalendarIcon, ChartIcon, UsersIcon } from "@/components/icons";
 import { Card, StatCard, StatusBadge } from "@/components/ui";
 import { revenueByMonth } from "@/data";
@@ -15,12 +15,23 @@ const MONTH_INDEX = {
 export default function Dashboard() {
   const { t } = useI18n();
 
-  // Дані зі стору беремо один раз на монтування; перехід між сторінками
-  // адмінки ремонтує компонент, тож статистика завжди свіжа.
-  const { appointments, clients } = useMemo(
-    () => ({ appointments: getAppointments(), clients: getClients() }),
-    [],
-  );
+  // Дані тягнемо з сервера при монтуванні; перехід між сторінками адмінки
+  // ремонтує компонент, тож статистика завжди свіжа.
+  const [appointments, setAppointments] = useState([]);
+  const [clients, setClients] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([getAppointments(), getClients()])
+      .then(([a, c]) => {
+        if (!alive) return;
+        setAppointments(a);
+        setClients(c);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const completed = appointments.filter((a) => a.status === "completed");
   const totalRevenue = completed.reduce((s, a) => s + a.price, 0);

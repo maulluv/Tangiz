@@ -10,4 +10,11 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  server: {
+    // У режимі розробки всі запити на /api проксіюються до бекенду (порт 4000),
+    // тож фронт звертається до того самого origin — без CORS і без хардкоду порту.
+    proxy: {
+      "/api": "http://localhost:4000",
+    },
+  },
 });

@@ -1,0 +1,99 @@
+// Схема бази даних TANGIZ.
+// Тут описано ВСІ сутності системи — Prisma із цього створює таблиці й типобезпечні
+// запити. Одна БД спільна для сайту й (згодом) Telegram-бота.
+//
+// Після зміни цього файлу: `npx prisma migrate dev --name <опис>`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Послуга (консультація, мануальна терапія тощо).
+// id збігається з ключами перекладів на фронті (service.s1 …), тож задаємо вручну.
+model Service {
+  id          String    @id
+  nameUk      String? // якщо власник додасть свою послугу — назва тут; інакше беремо з i18n
+  nameEn      String?
+  price       Int
+  durationMin Int
+  active      Boolean   @default(true)
+  slots       Slot[]
+  bookings    Booking[]
+  createdAt   DateTime  @default(now())
+}
+
+// Вільне віконце часу для послуги. Власник створює їх (у боті чи адмінці) —
+// сайт показує ті, що ще не зайняті. Заброньоване віконце → booked = true.
+model Slot {
+  id        String   @id @default(cuid())
+  service   Service  @relation(fields: [serviceId], references: [id])
+  serviceId String
+  startsAt  DateTime
+  booked    Boolean  @default(false)
+  booking   Booking? // зв'язок 1:1 із записом, що зайняв слот
+  createdAt DateTime @default(now())
+
+  @@index([serviceId, startsAt])
+}
+
+// Людина: і клієнт сайту, і власник (role = "owner").
+// Ключ клієнта — нормалізований телефон (380XXXXXXXXX), як і на фронті.
+model User {
+  id             String    @id
+  role           String    @default("client") // client | owner
+  name           String
+  phone          String?   @unique
+  telegram       String?
+  username       String?   @unique // логін власника (напр. "admin")
+  passwordHash   String? // bcrypt-хеш; у клієнтів з'являється при реєстрації
+  telegramChatId String? // куди бот надсилає власнику нові записи
+  bookings       Booking[]
+  createdAt      DateTime  @default(now())
+}
+
+// Запис на прийом. Об'єднує колишні bookingStore (сайт) і appointments (адмінка).
+model Booking {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  serviceId   String
+  slot        Slot?    @relation(fields: [slotId], references: [id])
+  slotId      String?  @unique
+  clientName  String // денормалізовано (ім'я на момент запису)
+  date        DateTime
+  durationMin Int
+  price       Int
+  status      String   @default("pending") // pending | confirmed | completed | canceled
+  source      String   @default("site") // site | telegram | phone
+  createdAt   DateTime @default(now())
+
+  @@index([status, date])
+}
+
+// Відгук. Текст зберігаємо для обох мов (користувач пише однією — дублюємо).
+model Review {
+  id        String   @id @default(cuid())
+  name      String
+  rating    Int
+  serviceId String? // опційно — про яку послугу
+  textUk    String
+  textEn    String
+  published Boolean  @default(true) // згодом можна вмикати модерацію
+  createdAt DateTime @default(now())
+}
+
+// Профіль клініки — один рядок (id = 1). Власник редагує в Налаштуваннях.
+model ClinicProfile {
+  id         Int    @id
+  name       String
+  doctorName String
+  phone      String
+  telegram   String
+  address    String
+}

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Modal, StatusBadge } from "@/components/ui";
-import { PlusIcon } from "@/components/icons";
+import { PlusIcon, PhoneIcon, TelegramIcon } from "@/components/icons";
 import {
   getAppointments,
   setAppointmentStatus,
@@ -28,10 +28,21 @@ const statusOf = { confirm: "confirmed", complete: "completed", cancel: "cancele
 
 export default function Appointments() {
   const { t } = useI18n();
-  const [list, setList] = useState(getAppointments);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    getAppointments()
+      .then((data) => alive && setList(data))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const rows = useMemo(
     () =>
@@ -43,13 +54,13 @@ export default function Appointments() {
 
   const detail = list.find((a) => a.id === detailId) || null;
 
-  function refresh() {
-    setList(getAppointments());
+  async function refresh() {
+    setList(await getAppointments());
   }
 
-  function handleStatus(id, status) {
-    setAppointmentStatus(id, status);
-    refresh();
+  async function handleStatus(id, status) {
+    await setAppointmentStatus(id, status);
+    await refresh();
   }
 
   return (
@@ -90,7 +101,13 @@ export default function Appointments() {
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-10 text-center text-muted">
+                    {t("appt.loading")}
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-10 text-center text-muted">
                     {t("appt.empty")}
@@ -162,6 +179,30 @@ function DetailModal({ appt, onClose, onStatus }) {
       {appt && (
         <div className="space-y-4 p-5 sm:p-6">
           <Row label={t("appt.client")} value={appt.clientName} />
+          {(appt.phone || appt.telegram) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {appt.phone && (
+                <a
+                  href={`tel:${appt.phone.replace(/\s/g, "")}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-sm hover:border-brand-200 hover:bg-brand-50/40"
+                >
+                  <PhoneIcon width={16} height={16} className="text-brand-600" />
+                  {appt.phone}
+                </a>
+              )}
+              {appt.telegram && (
+                <a
+                  href={`https://t.me/${appt.telegram.replace(/^@/, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-sm hover:border-brand-200 hover:bg-brand-50/40"
+                >
+                  <TelegramIcon width={16} height={16} className="text-brand-600" />
+                  {appt.telegram}
+                </a>
+              )}
+            </div>
+          )}
           <Row label={t("appt.service")} value={t(`service.${appt.serviceId}`)} />
           <Row label={t("appt.datetime")} value={dateTime(appt.date)} />
           <Row label={t("appt.source")} value={t(`source.${appt.source}`)} />

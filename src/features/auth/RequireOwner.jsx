@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useOwnerAuth } from "./OwnerAuthProvider";
+import { useOwnerAuth } from "./AuthProvider";
 
 export default function RequireOwner() {
   const { isOwner } = useOwnerAuth();

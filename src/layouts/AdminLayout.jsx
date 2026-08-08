@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   CalendarIcon,
   ChartIcon,
+  ClockIcon,
   CloseIcon,
   ListIcon,
   MedicalIcon,
@@ -18,6 +19,7 @@ const nav = [
   { to: "/admin", tKey: "nav.stats", icon: ChartIcon, end: true },
   { to: "/admin/clients", tKey: "nav.clients", icon: UsersIcon, end: false },
   { to: "/admin/appointments", tKey: "nav.appointments", icon: ListIcon, end: false },
+  { to: "/admin/pending", tKey: "nav.pending", icon: ClockIcon, end: false },
   { to: "/admin/calendar", tKey: "nav.calendar", icon: CalendarIcon, end: false },
 ];
 
@@ -25,6 +27,7 @@ const pageTitleKeys = {
   "/admin": "nav.stats",
   "/admin/clients": "nav.clients",
   "/admin/appointments": "nav.appointments",
+  "/admin/pending": "nav.pending",
   "/admin/calendar": "nav.calendar",
   "/admin/settings": "nav.settings",
 };

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Modal, StatusBadge } from "@/components/ui";
 import { PlusIcon } from "@/components/icons";
 import {
@@ -24,15 +24,31 @@ const initials = (name) =>
 
 export default function Clients() {
   const { t } = useI18n();
-  const [clients, setClients] = useState(getClients);
-  const [appts, setAppts] = useState(getAppointments);
+  const [clients, setClients] = useState([]);
+  const [appts, setAppts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [detailId, setDetailId] = useState(null);
   const [formClient, setFormClient] = useState(null); // null | {} (new) | client (edit)
 
-  function refresh() {
-    setClients(getClients());
-    setAppts(getAppointments());
+  useEffect(() => {
+    let alive = true;
+    Promise.all([getClients(), getAppointments()])
+      .then(([c, a]) => {
+        if (!alive) return;
+        setClients(c);
+        setAppts(a);
+      })
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function refresh() {
+    const [c, a] = await Promise.all([getClients(), getAppointments()]);
+    setClients(c);
+    setAppts(a);
   }
 
   const rows = useMemo(() => {
@@ -85,7 +101,13 @@ export default function Clients() {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="px-5 py-10 text-center text-muted">
+                  {t("appt.loading")}
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-5 py-10 text-center text-muted">
                   {t("clients.noResults")}
@@ -241,7 +263,7 @@ function ClientForm({ client, onClose, onSaved }) {
     onClose();
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     if (!name.trim()) {
       setError(true);
@@ -252,9 +274,9 @@ function ClientForm({ client, onClose, onSaved }) {
       phone: phone.trim(),
       telegram: telegram.trim() || undefined,
     };
-    if (editing) updateClient(client.id, data);
-    else addClient(data);
-    onSaved();
+    if (editing) await updateClient(client.id, data);
+    else await addClient(data);
+    await onSaved();
     close();
   }
 

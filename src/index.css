@@ -1,14 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #f6f7f9;
-  --color-surface: #ffffff;
-  --color-border: #e8eaed;
-  --color-muted: #6b7280;
-  --color-ink: #14161a;
+  /* Типографіка */
+  --font-sans: "General Sans", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: "Averia Serif Libre", ui-serif, Georgia, Cambria, serif;
 
+  /* Поверхні та нейтралі */
+  --color-bg: #fbfbfd;
+  --color-surface: #ffffff;
+  --color-border: #eceef2;
+  --color-muted: #6a7180;
+  --color-ink: #0f1115;
+
+  /* Бренд (електрик-синій у дусі 21st.dev) */
   --color-brand-50: #eef3ff;
-  --color-brand-100: #dbe5ff;
+  --color-brand-100: #dce6ff;
+  --color-brand-200: #c2d3ff;
   --color-brand-500: #4f7cff;
   --color-brand-600: #3b63e6;
   --color-brand-700: #2f4fc0;
@@ -17,11 +25,20 @@
   --color-warning: #d97706;
   --color-danger: #dc2626;
 
-  --radius-xl: 14px;
+  --radius-xl: 16px;
+  --radius-2xl: 22px;
+
+  /* М'які тіні для «floating» карток і кнопок */
+  --shadow-soft: 0 1px 2px rgba(15, 17, 21, 0.04),
+    0 8px 24px -12px rgba(15, 17, 21, 0.12);
+  --shadow-lift: 0 2px 4px rgba(15, 17, 21, 0.05),
+    0 18px 40px -18px rgba(47, 79, 192, 0.28);
+  --shadow-brand: 0 8px 20px -8px rgba(79, 124, 255, 0.55);
 }
 
 * {
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 html,
@@ -34,6 +51,68 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-ink);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+/* Акцентне слово курсивом-серифом — фірмовий штрих у стилі 21st.dev */
+.accent {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--color-brand-600);
+}
+
+/* Декоративне «світіння» під hero-секцією */
+.hero-glow {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 460px;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      42% 60% at 22% 8%,
+      rgba(79, 124, 255, 0.22),
+      transparent 70%
+    ),
+    radial-gradient(
+      40% 55% at 88% 0%,
+      rgba(139, 122, 255, 0.16),
+      transparent 72%
+    );
+  filter: blur(6px);
+}
+
+/* Ледь помітна сітка на тлі — глибина без візуального шуму */
+.grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(15, 17, 21, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 17, 21, 0.035) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(70% 60% at 50% 0%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(70% 60% at 50% 0%, #000 40%, transparent 100%);
+}
+
+/* Плавна поява секцій */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+  }
 }

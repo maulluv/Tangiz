@@ -1,0 +1,8 @@
+node_modules/
+# Локальна SQLite-БД (у кожного своя, у гіт не кладемо)
+prisma/dev.db
+prisma/dev.db-journal
+*.db
+*.db-journal
+# Секрети
+.env

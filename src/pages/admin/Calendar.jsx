@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Modal, StatusBadge } from "@/components/ui";
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "@/components/icons";
 import { getAppointments, NewAppointmentModal } from "@/features/admin";
@@ -25,19 +25,26 @@ export default function Calendar() {
   const { t, lang } = useI18n();
   const locale = LOCALES[lang] ?? "uk-UA";
 
-  const [appts, setAppts] = useState(getAppointments);
-  // Відкриваємось на місяці останнього запису (щоб демо одразу було видно).
+  const [appts, setAppts] = useState([]);
   const [cursor, setCursor] = useState(() => {
-    const base = appts.length
-      ? new Date(Math.max(...appts.map((a) => +new Date(a.date))))
-      : new Date();
-    return new Date(base.getFullYear(), base.getMonth(), 1);
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
   });
   const [selected, setSelected] = useState(null); // Date | null
   const [formDate, setFormDate] = useState(null); // YYYY-MM-DD | null — форма нового запису
 
-  function refresh() {
-    setAppts(getAppointments());
+  useEffect(() => {
+    let alive = true;
+    getAppointments()
+      .then((data) => alive && setAppts(data))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function refresh() {
+    setAppts(await getAppointments());
   }
 
   // Записи, згруповані за днем.

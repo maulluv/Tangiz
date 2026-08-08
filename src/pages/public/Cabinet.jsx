@@ -1,47 +1,66 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { Button, Card, Modal, StatusBadge } from "@/components/ui";
 import { CalendarIcon, PlusIcon } from "@/components/icons";
 import { useAuth } from "@/features/auth";
 import { useI18n } from "@/i18n";
-import { getBookings, cancelBooking } from "@/features/booking";
+import { getMyBookings, cancelBooking } from "@/features/booking";
 import { cancellationPolicy } from "@/data";
 import { dateTime, uah } from "@/utils/format";
 
 export default function Cabinet() {
   const { user, signOut } = useAuth();
   const { t, lang } = useI18n();
-  const [bookings, setBookings] = useState(() =>
-    user ? getBookings(user.id) : [],
-  );
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [cancelId, setCancelId] = useState(null);
+
+  // Записи тягнемо із сервера (лише свої — за токеном).
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    getMyBookings()
+      .then((data) => alive && setBookings(data))
+      .catch(() => alive && setLoadError(true))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [user]);
 
   if (!user) return <Navigate to="/login" replace />;
 
   const cancelTarget = bookings.find((b) => b.id === cancelId);
 
-  function confirmCancel() {
-    cancelBooking(cancelId);
-    setBookings(getBookings(user.id));
+  async function confirmCancel() {
+    try {
+      await cancelBooking(cancelId);
+      const fresh = await getMyBookings();
+      setBookings(fresh);
+    } catch {
+      /* лишаємо як є — користувач може спробувати ще раз */
+    }
     setCancelId(null);
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
-      <div className="flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
+      <div className="animate-rise flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {t("cabinet.welcome", { name: user.name.split(" ")[0] })}
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            {t("cabinet.welcome", { name: "" }).replace(/\s*[!！]?\s*$/, "")}{" "}
+            <span className="accent">{user.name.split(" ")[0]}</span>
           </h1>
-          <p className="mt-1 text-muted">{user.phone}</p>
+          <p className="mt-1.5 text-muted">{user.phone}</p>
         </div>
         <Button variant="ghost" onClick={signOut}>
           {t("common.logout")}
         </Button>
       </div>
 
-      <div className="mt-8 flex items-center justify-between">
-        <h2 className="font-semibold">{t("cabinet.myBookings")}</h2>
+      <div className="mt-10 flex items-center justify-between">
+        <h2 className="text-lg font-semibold tracking-tight">{t("cabinet.myBookings")}</h2>
         <Link to="/booking">
           <Button variant="outline">
             <PlusIcon width={18} height={18} />
@@ -51,7 +70,11 @@ export default function Cabinet() {
       </div>
 
       <div className="mt-4 space-y-3">
-        {bookings.length === 0 ? (
+        {loading ? (
+          <Card className="p-10 text-center text-muted">{t("cabinet.loading")}</Card>
+        ) : loadError ? (
+          <Card className="p-10 text-center text-danger">{t("cabinet.loadError")}</Card>
+        ) : bookings.length === 0 ? (
           <Card className="grid place-items-center gap-3 p-10 text-center">
             <CalendarIcon width={32} height={32} className="text-muted" />
             <p className="text-muted">{t("cabinet.empty")}</p>

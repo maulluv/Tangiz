@@ -1,10 +1,10 @@
 export {
   getAppointments,
-  addAppointment,
   setAppointmentStatus,
+  addAppointment,
   getClients,
   addClient,
   updateClient,
   clientStats,
-} from "./adminStore";
+} from "./adminApi";
 export { NewAppointmentModal } from "./NewAppointmentModal";
