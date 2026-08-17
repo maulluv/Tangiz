@@ -1,1 +1,1 @@
-export { getReviews, addReview } from "./reviewApi";
+export { getReviews, getReviewEligibility, addReview } from "./reviewApi";

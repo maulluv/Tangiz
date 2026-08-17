@@ -1,11 +1,20 @@
 // Адмін-дані через API (усі роути захищені токеном власника).
-import { apiGet, apiPost, apiPatch } from "@/lib/api";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 
 // --- Записи ---
 export const getAppointments = () => apiGet("/admin/appointments");
 export const setAppointmentStatus = (id, status) =>
   apiPatch(`/admin/appointments/${id}`, { status });
 export const addAppointment = (data) => apiPost("/admin/appointments", data);
+
+// --- Вільні слоти (розклад) ---
+export const getSlots = () => apiGet("/admin/slots");
+export const addSlots = (serviceId, startsAts) =>
+  apiPost("/admin/slots", { serviceId, startsAts });
+export const deleteSlot = (id) => apiDelete(`/admin/slots/${id}`);
+
+// --- Відгуки (модерація) ---
+export const deleteReview = (id) => apiDelete(`/admin/reviews/${id}`);
 
 // --- Клієнти ---
 export const getClients = () => apiGet("/admin/clients");

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   CalendarIcon,
   ChartIcon,
@@ -20,6 +20,7 @@ const nav = [
   { to: "/admin/clients", tKey: "nav.clients", icon: UsersIcon, end: false },
   { to: "/admin/appointments", tKey: "nav.appointments", icon: ListIcon, end: false },
   { to: "/admin/pending", tKey: "nav.pending", icon: ClockIcon, end: false },
+  { to: "/admin/availability", tKey: "nav.availability", icon: CalendarIcon, end: false },
   { to: "/admin/calendar", tKey: "nav.calendar", icon: CalendarIcon, end: false },
 ];
 
@@ -28,6 +29,7 @@ const pageTitleKeys = {
   "/admin/clients": "nav.clients",
   "/admin/appointments": "nav.appointments",
   "/admin/pending": "nav.pending",
+  "/admin/availability": "nav.availability",
   "/admin/calendar": "nav.calendar",
   "/admin/settings": "nav.settings",
 };
@@ -37,7 +39,12 @@ function SidebarContent({ onNavigate }) {
   const CLINIC = useClinic();
   return (
     <>
-      <div className="flex items-center gap-2.5 px-5 py-5">
+      <Link
+        to="/"
+        onClick={onNavigate}
+        className="flex items-center gap-2.5 px-5 py-5 transition-colors hover:bg-black/[0.03]"
+        title={t("nav.home")}
+      >
         <div className="grid size-9 place-items-center rounded-lg bg-brand-500 text-white">
           <MedicalIcon width={20} height={20} />
         </div>
@@ -45,7 +52,7 @@ function SidebarContent({ onNavigate }) {
           <div className="text-sm font-semibold">{CLINIC.name}</div>
           <div className="text-xs text-muted">{t("common.ownerCabinet")}</div>
         </div>
-      </div>
+      </Link>
 
       <nav className="flex-1 space-y-1 px-3 py-2">
         {nav.map(({ to, tKey, icon: Icon, end }) => (

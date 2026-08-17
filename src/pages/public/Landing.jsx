@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui";
+import { Button, Modal } from "@/components/ui";
 import { PhoneIcon, TelegramIcon } from "@/components/icons";
 import DoctorPhoto from "@/components/DoctorPhoto";
 import { useClinic } from "@/features/clinic";
@@ -8,6 +9,13 @@ import { useI18n } from "@/i18n";
 export default function Landing() {
   const { t } = useI18n();
   const CLINIC = useClinic();
+  const [callOpen, setCallOpen] = useState(false);
+
+  // Ініціює дзвінок і закриває модалку.
+  function callDoctor() {
+    setCallOpen(false);
+    window.location.href = `tel:${(CLINIC.phone || "").replace(/\s/g, "")}`;
+  }
 
   // Розбиваємо ім'я лікаря: прізвище — акцентним курсивом-серифом (штрих у дусі 21st.dev)
   const [firstName, ...rest] = CLINIC.doctorName.split(" ");
@@ -61,10 +69,14 @@ export default function Landing() {
                 <TelegramIcon width={18} height={18} />
                 {CLINIC.telegram}
               </a>
-              <span className="inline-flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCallOpen(true)}
+                className="inline-flex items-center gap-2 transition-colors hover:text-brand-700"
+              >
                 <PhoneIcon width={18} height={18} />
                 {CLINIC.phone}
-              </span>
+              </button>
             </div>
           </div>
 
@@ -82,6 +94,30 @@ export default function Landing() {
           </div>
         </section>
       </div>
+
+      {/* Підтвердження дзвінка лікарю */}
+      <Modal open={callOpen} onClose={() => setCallOpen(false)} title={t("call.title")} className="max-w-sm">
+        <div className="p-5 sm:p-6">
+          <div className="flex items-start gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600">
+              <PhoneIcon width={22} height={22} />
+            </div>
+            <div>
+              <p className="font-medium">{t("call.question")}</p>
+              <p className="mt-1 text-sm text-muted">{CLINIC.phone}</p>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setCallOpen(false)}>
+              {t("call.no")}
+            </Button>
+            <Button onClick={callDoctor}>
+              <PhoneIcon width={18} height={18} />
+              {t("call.yes")}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

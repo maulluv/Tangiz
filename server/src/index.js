@@ -1,9 +1,11 @@
 // Точка входу API-сервера TANGIZ.
 import express from "express";
 import cors from "cors";
+import { startBot } from "./bot.js";
 
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
+import clinicRouter from "./routes/clinic.js";
 import servicesRouter from "./routes/services.js";
 import availabilityRouter from "./routes/availability.js";
 import reviewsRouter from "./routes/reviews.js";
@@ -22,6 +24,7 @@ app.get("/api/health", (req, res) => res.json({ ok: true, time: new Date().toISO
 // Роутери.
 app.use("/api/auth", authRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/clinic", clinicRouter);
 app.use("/api/services", servicesRouter);
 app.use("/api/availability", availabilityRouter);
 app.use("/api/reviews", reviewsRouter);
@@ -39,4 +42,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🚀 TANGIZ API на http://localhost:${PORT}`);
+  startBot(); // без TELEGRAM_BOT_TOKEN — тихо вимкнено
 });

@@ -8,6 +8,7 @@
     "dev": "node --watch --env-file=.env src/index.js",
     "start": "node --env-file=.env src/index.js",
     "seed": "node --env-file=.env prisma/seed.js",
+    "bot:check": "node --env-file=.env scripts/check-bot.js",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio"
   },
@@ -19,6 +20,7 @@
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "grammy": "^1.45.1",
     "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {

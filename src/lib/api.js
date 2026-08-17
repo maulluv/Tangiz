@@ -7,14 +7,23 @@ export const TOKEN_KEY = "tangiz.token";
 
 async function request(path, options = {}) {
   const token = localStorage.getItem(TOKEN_KEY);
-  const res = await fetch(`${BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch {
+    // Мережа недоступна (сервер не запущено тощо) — status 0.
+    const err = new Error("Немає з'єднання із сервером.");
+    err.status = 0;
+    throw err;
+  }
 
   if (!res.ok) {
     // Сервер віддає помилки як { error: "…" } — дістаємо повідомлення, якщо є.
@@ -25,7 +34,9 @@ async function request(path, options = {}) {
     } catch {
       /* тіло не JSON — лишаємо загальне повідомлення */
     }
-    throw new Error(message);
+    const err = new Error(message);
+    err.status = res.status; // напр. 401 — невірний пароль, 5xx — проблема сервера
+    throw err;
   }
 
   if (res.status === 204) return null;
@@ -37,3 +48,4 @@ export const apiPost = (path, body) =>
   request(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
 export const apiPatch = (path, body) =>
   request(path, { method: "PATCH", body: JSON.stringify(body) });
+export const apiDelete = (path) => request(path, { method: "DELETE" });

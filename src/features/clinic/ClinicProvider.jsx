@@ -1,15 +1,28 @@
-import { createContext, useContext, useMemo, useState } from "react";
-import { getClinic, saveClinic as persist } from "./clinicStore";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { withDerived, CLINIC_BASE } from "./clinicStore";
+import { getClinicProfile, saveClinicProfile } from "./clinicApi";
 
 const ClinicContext = createContext(null);
 
 export function ClinicProvider({ children }) {
-  const [clinic, setClinic] = useState(getClinic);
+  // До завантаження з сервера показуємо базовий профіль — тож useClinic() завжди валідний.
+  const [clinic, setClinic] = useState(() => withDerived(CLINIC_BASE));
+
+  useEffect(() => {
+    getClinicProfile()
+      .then((data) => setClinic(withDerived({ ...CLINIC_BASE, ...data })))
+      .catch(() => {}); // немає звʼязку — лишаємо базовий профіль
+  }, []);
 
   const value = useMemo(
     () => ({
       clinic,
-      saveClinic: (patch) => setClinic(persist(patch)),
+      // Зберігає зміни на сервері (лише власник) і оновлює локальний стан.
+      saveClinic: async (patch) => {
+        const updated = await saveClinicProfile(patch);
+        setClinic(withDerived({ ...CLINIC_BASE, ...updated }));
+        return updated;
+      },
     }),
     [clinic],
   );

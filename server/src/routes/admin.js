@@ -4,6 +4,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { asyncHandler, normalizePhone, normalizeTg, isValidPhone } from "../utils.js";
 import { requireAuth, requireOwner } from "../auth.js";
+import { listFutureSlots, createSlots, deleteFreeSlot } from "../slotsLib.js";
 
 const router = Router();
 router.use(requireAuth, requireOwner);
@@ -170,6 +171,67 @@ router.patch(
       },
     });
     res.json(clientDTO(updated));
+  }),
+);
+
+// --- Відгуки (модерація) ----------------------------------------------
+
+// Видалити відгук (чистка спаму).
+router.delete(
+  "/reviews/:id",
+  asyncHandler(async (req, res) => {
+    const review = await prisma.review.findUnique({ where: { id: req.params.id } });
+    if (!review) return res.status(404).json({ error: "Відгук не знайдено." });
+    await prisma.review.delete({ where: { id: review.id } });
+    res.json({ ok: true });
+  }),
+);
+
+// --- Вільні слоти (розклад) -------------------------------------------
+
+function slotDTO(s) {
+  return { id: s.id, serviceId: s.serviceId, startsAt: s.startsAt, booked: s.booked };
+}
+
+// Майбутні слоти (вільні й зайняті) — щоб власник бачив увесь розклад.
+router.get(
+  "/slots",
+  asyncHandler(async (req, res) => {
+    const slots = await listFutureSlots();
+    res.json(slots.map(slotDTO));
+  }),
+);
+
+// Додати слот(и): body { serviceId, startsAts: [ISO|"YYYY-MM-DDTHH:mm:ss"] }.
+// Дублікати (та сама послуга+час) і минулі часи пропускаємо (див. slotsLib).
+router.post(
+  "/slots",
+  asyncHandler(async (req, res) => {
+    const { serviceId, startsAt, startsAts } = req.body ?? {};
+    const service = await prisma.service.findUnique({ where: { id: String(serviceId ?? "") } });
+    if (!service) return res.status(400).json({ error: "Послугу не знайдено." });
+
+    const raw = startsAts ?? (startsAt ? [startsAt] : []);
+    const dates = raw.map((s) => new Date(s));
+    if (!dates.some((d) => !Number.isNaN(d.getTime()) && d.getTime() > Date.now())) {
+      return res.status(400).json({ error: "Вкажіть коректну майбутню дату/час." });
+    }
+
+    const created = await createSlots(service.id, dates);
+    res.status(201).json({ created: created.map(slotDTO) });
+  }),
+);
+
+// Видалити слот. Зайнятий видалити не можна — спершу скасувати запис.
+router.delete(
+  "/slots/:id",
+  asyncHandler(async (req, res) => {
+    const result = await deleteFreeSlot(req.params.id);
+    if (result.ok) return res.json({ ok: true });
+    if (result.reason === "booked") {
+      return res.status(409).json({ error: "Слот зайнятий. Спершу скасуйте запис." });
+    }
+    return res.status(404).json({ error: "Слот не знайдено." });
   }),
 );
 

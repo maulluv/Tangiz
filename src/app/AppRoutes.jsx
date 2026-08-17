@@ -15,6 +15,7 @@ import Dashboard from "@/pages/admin/Dashboard";
 import Clients from "@/pages/admin/Clients";
 import Appointments from "@/pages/admin/Appointments";
 import Pending from "@/pages/admin/Pending";
+import Availability from "@/pages/admin/Availability";
 import Calendar from "@/pages/admin/Calendar";
 import Settings from "@/pages/admin/Settings";
 
@@ -42,6 +43,7 @@ export default function AppRoutes() {
           <Route path="clients" element={<Clients />} />
           <Route path="appointments" element={<Appointments />} />
           <Route path="pending" element={<Pending />} />
+          <Route path="availability" element={<Availability />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="settings" element={<Settings />} />
         </Route>

@@ -3,6 +3,7 @@ import { Button, Modal } from "@/components/ui";
 import { services } from "@/data";
 import { uah } from "@/utils/format";
 import { useI18n } from "@/i18n";
+import { DateSelect, TimeSelect } from "@/components/DateTimeInputs";
 import { addAppointment, getClients } from "./adminApi";
 
 const sources = ["telegram", "site", "phone"];
@@ -158,24 +159,18 @@ export function NewAppointmentModal({ open, onClose, onCreated, defaultDate = ""
 
         {/* Дата / час */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="block">
+          <div className="block">
             <span className="text-sm font-medium text-muted">{t("booking.date")}</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={`mt-1.5 ${inputCls}`}
-            />
-          </label>
-          <label className="block">
+            <div className="mt-1.5">
+              <DateSelect value={date} onChange={setDate} />
+            </div>
+          </div>
+          <div className="block">
             <span className="text-sm font-medium text-muted">{t("booking.time")}</span>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className={`mt-1.5 ${inputCls}`}
-            />
-          </label>
+            <div className="mt-1.5">
+              <TimeSelect value={time} onChange={setTime} />
+            </div>
+          </div>
         </div>
 
         {/* Джерело / статус */}

@@ -3,6 +3,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { asyncHandler, normalizePhone, normalizeTg, isValidPhone } from "../utils.js";
 import { requireAuth } from "../auth.js";
+import { notifyOwnerNewBooking } from "../bot.js";
 
 const router = Router();
 
@@ -74,7 +75,11 @@ router.post(
       await prisma.slot.update({ where: { id: slot.id }, data: { booked: true } });
     }
 
-    // TODO (Фаза 4): надіслати власнику сповіщення в Telegram про новий запис.
+    // Сповіщаємо власника в Telegram (не блокуючи відповідь; тихо ігноруємо помилки).
+    notifyOwnerNewBooking(booking).catch((e) =>
+      console.error("Не вдалося сповістити власника:", e.message),
+    );
+
     // accountExists → чи має цей телефон уже акаунт із паролем (для UI на екрані "готово").
     res.status(201).json({ booking, accountExists: !!existing?.passwordHash });
   }),

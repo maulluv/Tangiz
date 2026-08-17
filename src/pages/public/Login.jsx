@@ -10,14 +10,14 @@ export default function Login() {
   const { t } = useI18n();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState(""); // "" | "creds" | "server"
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    setError(false);
+    setError("");
 
     // 1) Спершу пробуємо як власника (логін = username), потім як клієнта (логін = телефон).
     const asOwner = await loginOwner(login, password);
@@ -30,7 +30,9 @@ export default function Login() {
       navigate("/cabinet", { replace: true });
       return;
     }
-    setError(true);
+    // Обидві спроби невдалі. 0/5xx = сервер недоступний; інакше — невірні дані.
+    const unreachable = [asOwner.status, asClient.status].some((s) => s === 0 || s >= 500);
+    setError(unreachable ? "server" : "creds");
     setSubmitting(false);
   }
 
@@ -56,7 +58,7 @@ export default function Login() {
               value={login}
               onChange={(e) => {
                 setLogin(e.target.value);
-                setError(false);
+                setError("");
               }}
               className={inputCls}
               placeholder="+380 67 123 45 67"
@@ -70,14 +72,16 @@ export default function Login() {
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
-                setError(false);
+                setError("");
               }}
               className={inputCls}
             />
           </div>
 
           {error && (
-            <p className="text-sm font-medium text-danger">{t("login.error")}</p>
+            <p className="text-sm font-medium text-danger">
+              {error === "server" ? t("login.serverError") : t("login.error")}
+            </p>
           )}
 
           <Button type="submit" className="w-full py-3" disabled={submitting}>

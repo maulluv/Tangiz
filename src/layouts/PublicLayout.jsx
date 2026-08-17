@@ -13,7 +13,6 @@ const navItems = [
   { to: "/about", end: false, tKey: "nav.about" },
   { to: "/services", end: false, tKey: "nav.services" },
   { to: "/reviews", end: false, tKey: "nav.reviews" },
-  { to: "/booking", end: false, tKey: "nav.booking" },
 ];
 
 export default function PublicLayout() {
@@ -61,8 +60,16 @@ export default function PublicLayout() {
             ))}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <LanguageSwitch />
+            {!isOwner && (
+              <Link to="/booking">
+                <Button className="px-3 sm:px-5">
+                  <span className="hidden sm:inline">{t("common.bookNow")}</span>
+                  <span className="sm:hidden">{t("common.book")}</span>
+                </Button>
+              </Link>
+            )}
             {isOwner ? (
               <Link to="/admin">
                 <Button className="px-3 sm:px-4">{t("nav.admin")}</Button>
@@ -108,15 +115,17 @@ export default function PublicLayout() {
         )}
       </header>
 
-      <main className="flex-1">
+      <main className="flex flex-1 flex-col">
         <Outlet />
       </main>
 
       <footer className="border-t border-border bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>{CLINIC.name}</span>
-            <span>· {CLINIC.address} ·</span>
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:py-6">
+          <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
+            <span className="font-medium text-ink">{CLINIC.name}</span>
+            <span aria-hidden="true" className="text-border">·</span>
+            <span>{CLINIC.address}</span>
+            <span aria-hidden="true" className="text-border">·</span>
             <a
               href={CLINIC.botUrl}
               target="_blank"
@@ -126,10 +135,13 @@ export default function PublicLayout() {
               {CLINIC.telegram}
             </a>
           </span>
-          <div className="flex items-center gap-3">
-            <SocialLinks className="-ml-2" />
+          <div className="flex items-center gap-2">
+            <SocialLinks />
             {isOwner && (
-              <Link to="/admin" className="hover:text-brand-700">
+              <Link
+                to="/admin"
+                className="ml-1 rounded-lg px-2 py-1 font-medium hover:text-brand-700"
+              >
                 {t("nav.admin")}
               </Link>
             )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Card } from "@/components/ui";
 import { useI18n } from "@/i18n";
@@ -34,7 +34,14 @@ export default function Settings() {
     Object.fromEntries(CLINIC_FIELDS.map((f) => [f, clinic[f] ?? ""])),
   );
   const [error, setError] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Профіль вантажиться з сервера асинхронно — синхронізуємо форму, коли він оновлюється.
+  useEffect(() => {
+    setForm(Object.fromEntries(CLINIC_FIELDS.map((f) => [f, clinic[f] ?? ""])));
+  }, [clinic]);
 
   const dirty = CLINIC_FIELDS.some((f) => (form[f] ?? "") !== (clinic[f] ?? ""));
 
@@ -42,21 +49,30 @@ export default function Settings() {
     setForm((f) => ({ ...f, [field]: val }));
     setSaved(false);
     setError(false);
+    setSaveError("");
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.name.trim() || !form.doctorName.trim()) {
       setError(true);
       return;
     }
-    saveClinic({
-      name: form.name.trim(),
-      doctorName: form.doctorName.trim(),
-      phone: form.phone.trim(),
-      telegram: form.telegram.trim(),
-      address: form.address.trim(),
-    });
-    setSaved(true);
+    setSaving(true);
+    setSaveError("");
+    try {
+      await saveClinic({
+        name: form.name.trim(),
+        doctorName: form.doctorName.trim(),
+        phone: form.phone.trim(),
+        telegram: form.telegram.trim(),
+        address: form.address.trim(),
+      });
+      setSaved(true);
+    } catch (err) {
+      setSaveError(err.message || t("settings.required"));
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleLogout() {
@@ -106,6 +122,7 @@ export default function Settings() {
         {error && (
           <p className="mt-4 text-sm text-danger">{t("settings.required")}</p>
         )}
+        {saveError && <p className="mt-4 text-sm text-danger">{saveError}</p>}
 
         <div className="mt-6 flex items-center justify-end gap-3">
           {saved && !dirty && (
@@ -113,8 +130,8 @@ export default function Settings() {
               {t("settings.saved")}
             </span>
           )}
-          <Button onClick={handleSave} disabled={!dirty}>
-            {t("settings.save")}
+          <Button onClick={handleSave} disabled={!dirty || saving}>
+            {saving ? t("reviews.submitting") : t("settings.save")}
           </Button>
         </div>
       </Card>

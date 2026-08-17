@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
         setSession(await fn(...args));
         return { ok: true };
       } catch (err) {
-        return { ok: false, error: err.message };
+        return { ok: false, error: err.message, status: err.status };
       }
     };
 

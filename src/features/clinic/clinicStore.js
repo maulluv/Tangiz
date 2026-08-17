@@ -1,18 +1,16 @@
-// Профіль клініки: базові дані з data/clinic.js, поверх — збережені власником
-// зміни в localStorage. botUrl та initials завжди похідні, тож лишаються
-// узгодженими після редагування. Згодом — реальний бекенд.
+// Похідні поля профілю клініки (ініціали, посилання на бот) — чисті хелпери.
+// Дані профілю живуть на сервері (див. clinicApi.js), тут лише обчислення.
 import { CLINIC } from "@/data";
-
-const KEY = "tangiz.clinic";
 
 // Поля, які власник може редагувати в Налаштуваннях.
 export const CLINIC_FIELDS = ["name", "doctorName", "phone", "telegram", "address"];
 
-function withDerived(c) {
+// Додає похідні поля: initials (з імені лікаря) і botUrl (з telegram-ніка).
+export function withDerived(c) {
   const handle = (c.telegram || "").replace(/^@/, "");
   return {
     ...c,
-    initials: c.doctorName
+    initials: (c.doctorName || "")
       .split(" ")
       .map((w) => w[0])
       .join("")
@@ -22,21 +20,5 @@ function withDerived(c) {
   };
 }
 
-export function getClinic() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return withDerived({ ...CLINIC, ...JSON.parse(raw) });
-  } catch {
-    /* пошкоджені дані — повертаємо базу */
-  }
-  return withDerived(CLINIC);
-}
-
-export function saveClinic(patch) {
-  const merged = { ...getClinic(), ...patch };
-  // Зберігаємо лише редаговані поля — botUrl/initials похідні.
-  const toStore = {};
-  for (const f of CLINIC_FIELDS) toStore[f] = merged[f];
-  localStorage.setItem(KEY, JSON.stringify(toStore));
-  return withDerived({ ...CLINIC, ...toStore });
-}
+// Базовий профіль (дефолт до завантаження з сервера).
+export const CLINIC_BASE = CLINIC;
