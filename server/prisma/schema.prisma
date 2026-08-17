@@ -97,3 +97,14 @@ model ClinicProfile {
   telegram   String
   address    String
 }
+
+// Місток «переслане повідомлення → чат пацієнта».
+// Коли пацієнт пише боту, ми копіюємо повідомлення лікарю й запам'ятовуємо id копії.
+// Якщо лікар відповість на неї реплаєм — знаємо, кому переслати відповідь.
+model TelegramRelay {
+  id         String   @id @default(cuid())
+  ownerMsgId Int      @unique // id копії в чаті лікаря
+  chatId     String // чат пацієнта, куди слати відповідь
+  fromName   String? // ім'я пацієнта — для підтвердження лікарю
+  createdAt  DateTime @default(now())
+}

@@ -5,12 +5,13 @@
 //  • /bind <пароль> — прив'язати цей чат як отримувача записів;
 //  • шле власнику нові записи із сайту з кнопками ✅ Підтвердити / ❌ Скасувати;
 //  • /add — додати вільні години на послугу; /slots — переглянути й видалити;
-//  • інші повідомлення від людей — ввічлива відповідь + пересилання власнику.
+//  • повідомлення від пацієнтів — ввічлива відповідь + копія власнику (з вкладеннями);
+//    лікар відповідає реплаєм на копію → бот пересилає відповідь пацієнту (TelegramRelay).
 // Керування слотами використовує ту саму логіку, що й сайт (slotsLib) → усе синхронно.
 import { Bot, InlineKeyboard } from "grammy";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db.js";
-import { listFutureSlots, createSlots, deleteFreeSlot } from "./slotsLib.js";
+import { listFutureSlots, createSlots, deleteFreeSlot, cancelBooking } from "./slotsLib.js";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 export const botEnabled = !!TOKEN;
@@ -73,14 +74,35 @@ async function buildSlotsView() {
 function buildBot() {
   const b = new Bot(TOKEN);
 
-  b.command("start", (ctx) =>
-    ctx.reply(
-      "Вітаю! Це службовий бот клініки TANGIZ.\n\n" +
-        "• Якщо ви лікар — надішліть «/bind ваш_пароль», щоб отримувати сюди нові записи.\n" +
-        "   Далі: /add — додати вільні години, /slots — переглянути й видалити.\n" +
-        "• Якщо ви пацієнт — записатися найзручніше на сайті. Можете також написати тут, і лікар відповість.",
-    ),
-  );
+  // /start відповідає по-різному трьом аудиторіям, щоб пацієнт не бачив службових команд:
+  //  • лікар (прив'язаний чат) — його інструменти;
+  //  • ніхто ще не прив'язаний — підказка про /bind (лише на час налаштування бота);
+  //  • усі інші — текст для пацієнта, без згадок про пароль і команди.
+  b.command("start", async (ctx) => {
+    const owner = await getOwner();
+
+    if (isOwnerChat(owner, ctx.chat.id)) {
+      return ctx.reply(
+        "Вітаю! Ви отримуєте сюди нові записи з сайту.\n\n" +
+          "/add — додати вільні години\n" +
+          "/slots — переглянути й видалити вільні години",
+      );
+    }
+
+    if (!owner?.telegramChatId) {
+      return ctx.reply(
+        "Вітаю! Це службовий бот клініки TANGIZ.\n\n" +
+          "Бот ще не налаштований. Якщо ви лікар — надішліть «/bind ваш_пароль», " +
+          "щоб отримувати сюди нові записи з сайту.",
+      );
+    }
+
+    return ctx.reply(
+      "Вітаю! Це бот клініки TANGIZ.\n\n" +
+        "Записатися на прийом найзручніше на сайті — там видно всі вільні години.\n" +
+        "Можете також написати сюди: лікар отримає ваше повідомлення й відповість.",
+    );
+  });
 
   // Прив'язка власника: /bind <пароль>.
   b.command("bind", async (ctx) => {
@@ -157,9 +179,10 @@ function buildBot() {
     if (!booking) return ctx.answerCallbackQuery({ text: "Запис не знайдено." });
 
     const status = action === "confirm" ? "confirmed" : "canceled";
-    await prisma.booking.update({ where: { id: bookingId }, data: { status } });
-    if (status === "canceled" && booking.slotId) {
-      await prisma.slot.update({ where: { id: booking.slotId }, data: { booked: false } });
+    if (status === "canceled") {
+      await cancelBooking(bookingId); // звільняє слот і відв'язує його від запису
+    } else {
+      await prisma.booking.update({ where: { id: bookingId }, data: { status } });
     }
 
     await ctx.answerCallbackQuery({ text: status === "confirmed" ? "Підтверджено ✅" : "Скасовано ❌" });
@@ -177,6 +200,29 @@ function buildBot() {
     const owner = await getOwner();
 
     if (isOwnerChat(owner, ctx.chat.id)) {
+      // Реплай на переслане повідомлення = відповідь пацієнту. Перевіряємо це першим:
+      // явний намір лікаря важливіший за незавершений /add.
+      const replyTo = ctx.message.reply_to_message?.message_id;
+      if (replyTo) {
+        const relay = await prisma.telegramRelay.findUnique({ where: { ownerMsgId: replyTo } });
+        if (relay) {
+          try {
+            if (ctx.message.text) {
+              await ctx.api.sendMessage(relay.chatId, `👨‍⚕️ Відповідь лікаря:\n\n${ctx.message.text}`);
+            } else {
+              // Вкладення (фото, документ, голосове) — копіюємо як є, з підписом-заголовком.
+              await ctx.api.sendMessage(relay.chatId, "👨‍⚕️ Відповідь лікаря:");
+              await ctx.api.copyMessage(relay.chatId, ctx.chat.id, ctx.message.message_id);
+            }
+            return ctx.reply(`✅ Надіслано${relay.fromName ? ` — ${relay.fromName}` : ""}.`);
+          } catch (e) {
+            // Найчастіше пацієнт заблокував бота або видалив чат.
+            return ctx.reply(`❌ Не вдалося надіслати: ${e.description || e.message}`);
+          }
+        }
+        return ctx.reply("Не бачу, кому це відповідь. Відповідайте реплаєм на переслане повідомлення пацієнта.");
+      }
+
       // Якщо лікар зараз додає слоти — трактуємо текст як дати/час.
       const serviceId = pendingAdd.get(String(ctx.chat.id));
       if (serviceId && ctx.message.text) {
@@ -210,14 +256,26 @@ function buildBot() {
     );
     if (owner?.telegramChatId) {
       const f = ctx.from;
-      const who =
-        (f ? `${f.first_name ?? ""} ${f.last_name ?? ""}`.trim() : "") +
-        (f?.username ? ` (@${f.username})` : "");
-      const text = ctx.message.text || "(вкладення без тексту)";
+      const name = f ? `${f.first_name ?? ""} ${f.last_name ?? ""}`.trim() : "";
+      const who = name + (f?.username ? ` (@${f.username})` : "");
       try {
-        await ctx.api.sendMessage(owner.telegramChatId, `✉️ Повідомлення від ${who || "пацієнта"}:\n\n${text}`);
-      } catch {
-        /* власник міг заблокувати бота — ігноруємо */
+        await ctx.api.sendMessage(
+          owner.telegramChatId,
+          `✉️ Повідомлення від ${who || "пацієнта"} — відповідайте реплаєм на наступне повідомлення:`,
+        );
+        // copyMessage переносить будь-який вміст (текст, фото, документ, голосове),
+        // на відміну від колишнього ctx.message.text, який губив усі вкладення.
+        const copy = await ctx.api.copyMessage(owner.telegramChatId, ctx.chat.id, ctx.message.message_id);
+        // Запам'ятовуємо, кому належить копія — щоб реплай лікаря дійшов адресату.
+        await prisma.telegramRelay.create({
+          data: {
+            ownerMsgId: copy.message_id,
+            chatId: String(ctx.chat.id),
+            fromName: name || null,
+          },
+        });
+      } catch (e) {
+        console.error("Не вдалося переслати повідомлення пацієнта:", e.description || e.message);
       }
     }
   });

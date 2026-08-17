@@ -4,6 +4,7 @@ import { prisma } from "../db.js";
 import { asyncHandler, normalizePhone, normalizeTg, isValidPhone } from "../utils.js";
 import { requireAuth } from "../auth.js";
 import { notifyOwnerNewBooking } from "../bot.js";
+import { cancelBooking } from "../slotsLib.js";
 
 const router = Router();
 
@@ -57,19 +58,29 @@ router.post(
       where: { serviceId: service.id, startsAt: when, booked: false },
     });
 
-    const booking = await prisma.booking.create({
-      data: {
-        userId: user.id,
-        serviceId: service.id,
-        slotId: slot?.id ?? null,
-        clientName: cleanName,
-        date: when,
-        durationMin: service.durationMin,
-        price: service.price,
-        status: "pending",
-        source: "site",
-      },
-    });
+    let booking;
+    try {
+      booking = await prisma.booking.create({
+        data: {
+          userId: user.id,
+          serviceId: service.id,
+          slotId: slot?.id ?? null,
+          clientName: cleanName,
+          date: when,
+          durationMin: service.durationMin,
+          price: service.price,
+          status: "pending",
+          source: "site",
+        },
+      });
+    } catch (e) {
+      // P2002 по slotId — цей слот уже за кимось (напр. двоє натиснули одночасно).
+      // Краще зрозуміла відповідь, ніж 500.
+      if (e.code === "P2002") {
+        return res.status(409).json({ error: "Цей час уже зайняли. Оберіть, будь ласка, інший." });
+      }
+      throw e;
+    }
 
     if (slot) {
       await prisma.slot.update({ where: { id: slot.id }, data: { booked: true } });
@@ -108,13 +119,7 @@ router.post(
       return res.status(404).json({ error: "Запис не знайдено." });
     }
 
-    const updated = await prisma.booking.update({
-      where: { id: booking.id },
-      data: { status: "canceled" },
-    });
-    if (booking.slotId) {
-      await prisma.slot.update({ where: { id: booking.slotId }, data: { booked: false } });
-    }
+    const updated = await cancelBooking(booking.id);
     res.json(updated);
   }),
 );
