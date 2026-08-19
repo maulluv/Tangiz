@@ -2,6 +2,8 @@ import { cn } from "@/utils/cn";
 import { useI18n } from "@/i18n";
 
 const statusCls = {
+  // Бронь під передоплатою: слот уже зайнято, але грошей ще немає.
+  pending_payment: "bg-violet-50 text-violet-700 ring-violet-200",
   pending: "bg-amber-50 text-amber-700 ring-amber-200",
   confirmed: "bg-brand-50 text-brand-700 ring-brand-100",
   completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",

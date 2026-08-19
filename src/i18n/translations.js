@@ -294,6 +294,25 @@ export const translations = {
     "apptForm.required": "Заповніть обовʼязкові поля.",
 
     // statuses
+    "booking.depositTitle": "Передоплата за прийом",
+    "booking.depositNote":
+      "Ця сума входить у вартість прийому — на місці лишиться доплатити {rest}. Обраний час тримаємо за вами {min} хв, поки триває оплата.",
+    "booking.toPayNow": "До сплати зараз:",
+    "booking.submitPay": "Оплатити й записатися",
+    "status.pending_payment": "Очікує оплати",
+    "pay.waitTitle": "Перевіряємо оплату",
+    "pay.waitText":
+      "Це займає кілька секунд: підтвердження приходить від банку, а не з цієї сторінки. Не закривайте вкладку.",
+    "pay.paidTitle": "Оплату отримано, запис підтверджено",
+    "pay.paidText":
+      "Лікар уже бачить ваш запис. Увімкніть нагадування в Telegram — напишемо за добу й за годину до візиту.",
+    "pay.failedTitle": "Оплата не пройшла",
+    "pay.failedText":
+      "Гроші не списані, а обраний час знову вільний. Спробуйте записатися ще раз — або напишіть нам, і лікар підбере зручний час.",
+    "pay.errorTitle": "Не вдалося перевірити оплату",
+    "pay.errorText":
+      "Схоже, проблема зі зв'язком. Якщо гроші списалися, запис уже створено — перевірте «Мої записи» або напишіть нам.",
+    "pay.retry": "Обрати час ще раз",
     "status.pending": "Очікує",
     "status.confirmed": "Підтверджено",
     "status.completed": "Завершено",
@@ -627,6 +646,25 @@ export const translations = {
     "apptForm.required": "Fill in the required fields.",
 
     // statuses
+    "booking.depositTitle": "Prepayment for the visit",
+    "booking.depositNote":
+      "This amount counts toward the visit — {rest} is due at the clinic. We hold your slot for {min} min while you pay.",
+    "booking.toPayNow": "Due now:",
+    "booking.submitPay": "Pay and book",
+    "status.pending_payment": "Awaiting payment",
+    "pay.waitTitle": "Checking your payment",
+    "pay.waitText":
+      "This takes a few seconds: confirmation comes from the bank, not from this page. Please keep the tab open.",
+    "pay.paidTitle": "Payment received, appointment confirmed",
+    "pay.paidText":
+      "The doctor can already see your booking. Turn on Telegram reminders — we'll write a day and an hour before the visit.",
+    "pay.failedTitle": "The payment didn't go through",
+    "pay.failedText":
+      "You haven't been charged, and the slot is free again. Try booking once more — or write to us and the doctor will suggest a time.",
+    "pay.errorTitle": "We couldn't verify the payment",
+    "pay.errorText":
+      "Looks like a connection problem. If you were charged, the booking already exists — check \"My appointments\" or write to us.",
+    "pay.retry": "Pick a time again",
     "status.pending": "Pending",
     "status.confirmed": "Confirmed",
     "status.completed": "Completed",

@@ -84,7 +84,7 @@ export default function Cabinet() {
           </Card>
         ) : (
           bookings.map((b) => {
-            const cancelable = b.status === "pending" || b.status === "confirmed";
+            const cancelable = ["pending_payment", "pending", "confirmed"].includes(b.status);
             return (
               <Card
                 key={b.id}

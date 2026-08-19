@@ -6,6 +6,8 @@ import { normalizeLang } from "../botText.js";
 import { requireAuth } from "../auth.js";
 import { notifyOwnerNewBooking, notifyOwnerClientCanceled } from "../bot.js";
 import { cancelBooking } from "../slotsLib.js";
+import { depositFor, paymentRequired, HOLD_MIN } from "../payments/config.js";
+import { startCheckout } from "../payments/index.js";
 
 const router = Router();
 
@@ -64,6 +66,11 @@ router.post(
       where: { serviceId: service.id, startsAt: when, booked: false },
     });
 
+    // Передоплата: запис створюється в pending_payment і тримає слот HOLD_MIN хвилин.
+    // Не заплатив — прибиральник (payments/sweeper) поверне час у вільні.
+    const deposit = depositFor(service.price);
+    const needsPayment = paymentRequired && deposit > 0;
+
     let booking;
     try {
       booking = await prisma.booking.create({
@@ -75,7 +82,8 @@ router.post(
           date: when,
           durationMin: service.durationMin,
           price: service.price,
-          status: "pending",
+          status: needsPayment ? "pending_payment" : "pending",
+          holdUntil: needsPayment ? new Date(Date.now() + HOLD_MIN * 60_000) : null,
           source: "site",
         },
       });
@@ -90,6 +98,16 @@ router.post(
 
     if (slot) {
       await prisma.slot.update({ where: { id: slot.id }, data: { booked: true } });
+    }
+
+    // Оплата попереду — лікаря не смикаємо: він дізнається про запис, коли прийдуть гроші.
+    if (needsPayment) {
+      const { checkoutUrl } = await startCheckout(booking, deposit);
+      return res.status(201).json({
+        booking,
+        accountExists: !!existing?.passwordHash,
+        payment: { amount: deposit, checkoutUrl, holdMin: HOLD_MIN },
+      });
     }
 
     // Сповіщаємо власника в Telegram (не блокуючи відповідь; тихо ігноруємо помилки).

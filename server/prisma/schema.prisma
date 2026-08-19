@@ -70,7 +70,11 @@ model Booking {
   date           DateTime
   durationMin    Int
   price          Int
-  status         String    @default("pending") // pending | confirmed | completed | canceled
+  status         String    @default("pending") // pending_payment | pending | confirmed | completed | canceled
+  // Поки триває передоплата, слот тримається за клієнтом. Минув holdUntil і грошей немає —
+  // прибиральник (payments/sweeper) скасовує запис і повертає слот у вільні.
+  holdUntil      DateTime?
+  payments       Payment[]
   source         String    @default("site") // site | telegram | phone
   // Коли клієнту надіслано нагадування (щоб не надіслати те саме двічі). null — ще не слали.
   remindedDayAt  DateTime? // за добу до візиту
@@ -78,6 +82,25 @@ model Booking {
   createdAt      DateTime  @default(now())
 
   @@index([status, date])
+}
+
+// Платіж за запис (передоплата). Джерело правди про гроші — ТІЛЬКИ вебхук провайдера
+// з перевіреним підписом; редірект браузера статус не змінює (його легко підробити).
+// providerRef — id операції на боці банку, потрібен для звірки й повернень.
+model Payment {
+  id          String    @id @default(cuid())
+  booking     Booking   @relation(fields: [bookingId], references: [id])
+  bookingId   String
+  provider    String // mock | liqpay | mono — див. src/payments/providers
+  providerRef String? // id транзакції у провайдера
+  amount      Int // гривні, як і Service.price; адаптери самі переводять у копійки
+  currency    String    @default("UAH")
+  status      String    @default("pending") // pending | paid | failed | expired
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([bookingId])
 }
 
 // Відгук. Текст зберігаємо для обох мов (користувач пише однією — дублюємо).

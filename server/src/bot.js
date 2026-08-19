@@ -477,27 +477,31 @@ export function startBot() {
   reminderTimer.unref?.(); // не тримати процес живим лише через таймер
 }
 
-// Сповістити власника про новий запис із сайту (викликається з routes/bookings.js).
-export async function notifyOwnerNewBooking(booking) {
+// Сповістити власника про новий запис із сайту (routes/bookings.js) або про оплачений
+// запис (payments/index.js — тоді підтверджувати нічого не треба, гроші вже прийшли).
+export async function notifyOwnerNewBooking(booking, { paid = 0 } = {}) {
   if (!botEnabled || !bot) return;
   const owner = await getOwner();
   if (!owner?.telegramChatId) return; // лікар ще не зробив /bind
 
   const client = await prisma.user.findUnique({ where: { id: booking.userId } });
   const lines = [
-    "🆕 Новий запис із сайту",
+    paid ? "💳 Новий запис — передоплата отримана" : "🆕 Новий запис із сайту",
     `👤 ${booking.clientName}`,
     client?.phone ? `📞 ${client.phone}` : null,
     client?.telegram ? `✈️ ${client.telegram}` : null,
     normalizeLang(client?.lang) === "en" ? "🇬🇧 Пише англійською" : null,
     `🩺 ${ownerService(booking.serviceId)}`,
     `🗓 ${formatDate(booking.date)}`,
-    `💰 ${booking.price} грн`,
+    paid ? `💰 ${booking.price} грн (сплачено ${paid}, на місці ${booking.price - paid})` : `💰 ${booking.price} грн`,
   ].filter(Boolean);
 
-  const kb = new InlineKeyboard()
-    .text("✅ Підтвердити", `confirm:${booking.id}`)
-    .text("❌ Скасувати", `cancel:${booking.id}`);
+  // Оплачений запис уже підтверджений — лишаємо лише скасування.
+  const kb = paid
+    ? new InlineKeyboard().text("❌ Скасувати", `cancel:${booking.id}`)
+    : new InlineKeyboard()
+        .text("✅ Підтвердити", `confirm:${booking.id}`)
+        .text("❌ Скасувати", `cancel:${booking.id}`);
 
   await bot.api.sendMessage(owner.telegramChatId, lines.join("\n"), { reply_markup: kb });
 }
@@ -535,6 +539,38 @@ export async function notifyClientBookingStatus(bookingId, status) {
     console.error("Не вдалося сповістити пацієнта:", e.description || e.message);
     return { sent: false, reason: "error" };
   }
+}
+
+// Гроші прийшли, коли бронь уже знято (людина платила довше за таймер). Автоматично
+// повертати кошти не можна — це рішення лікаря, тож просто б'ємо на сполох.
+export async function notifyOwnerPaymentIssue(bookingId, amount) {
+  if (!botEnabled || !bot) return;
+  const owner = await getOwner();
+  if (!owner?.telegramChatId) return;
+
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { user: true },
+  });
+  if (!booking) return;
+
+  await bot.api
+    .sendMessage(
+      owner.telegramChatId,
+      [
+        "⚠️ Оплата надійшла після зняття броні",
+        `👤 ${booking.clientName}`,
+        booking.user?.phone ? `📞 ${booking.user.phone}` : null,
+        `🩺 ${ownerService(booking.serviceId)}`,
+        `🗓 ${formatDate(booking.date)}`,
+        `💳 ${amount} грн`,
+        "",
+        "Час уже вільний для інших. Потрібно повернути кошти або погодити новий час.",
+      ]
+        .filter((l) => l !== null)
+        .join("\n"),
+    )
+    .catch((e) => console.error("Не вдалося сповістити про пізню оплату:", e.description || e.message));
 }
 
 // Сповістити ЛІКАРЯ, що пацієнт скасував запис сам (кабінет на сайті).
