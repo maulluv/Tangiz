@@ -5,6 +5,7 @@ import { prisma } from "../db.js";
 import { asyncHandler, normalizePhone, normalizeTg, isValidPhone } from "../utils.js";
 import { requireAuth, requireOwner } from "../auth.js";
 import { listFutureSlots, createSlots, deleteFreeSlot, cancelBooking } from "../slotsLib.js";
+import { notifyClientBookingStatus } from "../bot.js";
 
 const router = Router();
 router.use(requireAuth, requireOwner);
@@ -59,6 +60,14 @@ router.patch(
     } else {
       await prisma.booking.update({ where: { id: booking.id }, data: { status } });
     }
+    // Пацієнту пишемо про підтвердження/скасування — так само, як із кнопок у боті
+    // (сам notifyClientBookingStatus мовчить, якщо статус інший або бот вимкнено).
+    if (status !== booking.status) {
+      notifyClientBookingStatus(booking.id, status).catch((e) =>
+        console.error("Не вдалося сповістити пацієнта:", e.message),
+      );
+    }
+
     const updated = await prisma.booking.findUnique({
       where: { id: booking.id },
       include: { user: true },

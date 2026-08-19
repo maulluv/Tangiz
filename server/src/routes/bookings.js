@@ -2,8 +2,9 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { asyncHandler, normalizePhone, normalizeTg, isValidPhone } from "../utils.js";
+import { normalizeLang } from "../botText.js";
 import { requireAuth } from "../auth.js";
-import { notifyOwnerNewBooking } from "../bot.js";
+import { notifyOwnerNewBooking, notifyOwnerClientCanceled } from "../bot.js";
 import { cancelBooking } from "../slotsLib.js";
 
 const router = Router();
@@ -12,7 +13,7 @@ const router = Router();
 router.post(
   "/",
   asyncHandler(async (req, res) => {
-    const { name, phone, telegram, serviceId, date } = req.body ?? {};
+    const { name, phone, telegram, serviceId, date, lang } = req.body ?? {};
 
     const cleanName = String(name ?? "").trim();
     if (!cleanName) return res.status(400).json({ error: "Вкажіть ім'я." });
@@ -29,6 +30,9 @@ router.post(
       return res.status(400).json({ error: "Некоректна дата/час." });
     }
 
+    // Мовою сайту на момент запису бот далі говоритиме з людиною в Telegram.
+    const clientLang = normalizeLang(lang);
+
     const userId = normalizePhone(phone);
     const existing = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -42,15 +46,17 @@ router.post(
           name: cleanName,
           phone: String(phone),
           telegram: normalizeTg(telegram) || null,
+          lang: clientLang,
         },
       });
     } else if (!existing.passwordHash) {
       user = await prisma.user.update({
         where: { id: userId },
-        data: { name: cleanName, telegram: normalizeTg(telegram) || null },
+        data: { name: cleanName, telegram: normalizeTg(telegram) || null, lang: clientLang },
       });
     } else {
-      user = existing;
+      // Зареєстрований профіль не чіпаємо, крім мови — нею він щойно користувався.
+      user = await prisma.user.update({ where: { id: userId }, data: { lang: clientLang } });
     }
 
     // Якщо це заброньований слот — знаходимо його й позначаємо зайнятим.
@@ -119,7 +125,17 @@ router.post(
       return res.status(404).json({ error: "Запис не знайдено." });
     }
 
+    const wasActive = booking.status !== "canceled";
     const updated = await cancelBooking(booking.id);
+
+    // Лікар має побачити, що час звільнився (раніше слот тихо ставав вільним).
+    // Повторне скасування вже скасованого — мовчки, щоб не смикати лікаря двічі.
+    if (wasActive) {
+      notifyOwnerClientCanceled(booking.id).catch((e) =>
+        console.error("Не вдалося сповістити лікаря про скасування:", e.message),
+      );
+    }
+
     res.json(updated);
   }),
 );

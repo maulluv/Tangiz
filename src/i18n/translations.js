@@ -155,8 +155,12 @@ export const translations = {
     "booking.callNoteText":
       "Ми зателефонуємо на {phone}, щоб підтвердити запис.",
     "booking.tgAlsoNote": "Також продублюємо підтвердження в Telegram ({tg}).",
-    "booking.simNote":
-      "Демо: підтвердження й нагадування підключимо разом із реальним записом.",
+    "booking.remindTitle": "Нагадаємо за добу й за годину",
+    "booking.remindText":
+      "Відкрийте бота в Telegram — він нагадає про візит за добу й за годину, " +
+      "а також напише, щойно лікар підтвердить запис.",
+    "booking.remindCta": "Увімкнути нагадування",
+    "booking.simNote": "Демо: підтвердження запису підключимо разом із реальним записом.",
     "booking.goCabinet": "Перейти в кабінет",
     "booking.slotLabel": "Вільний час",
     "booking.loadingSlots": "Завантаження вільних годин…",
@@ -484,8 +488,12 @@ export const translations = {
     "booking.callNoteTitle": "The doctor will contact you",
     "booking.callNoteText": "We'll call {phone} to confirm your appointment.",
     "booking.tgAlsoNote": "We'll also send a confirmation on Telegram ({tg}).",
-    "booking.simNote":
-      "Demo: confirmations and reminders will be wired up with the real backend.",
+    "booking.remindTitle": "We'll remind you a day and an hour before",
+    "booking.remindText":
+      "Open the bot in Telegram — it will remind you a day and an hour before your visit, " +
+      "and message you as soon as the doctor confirms the appointment.",
+    "booking.remindCta": "Turn on reminders",
+    "booking.simNote": "Demo: booking confirmations will be wired up with the real backend.",
     "booking.goCabinet": "Go to account",
     "booking.slotLabel": "Available time",
     "booking.loadingSlots": "Loading available times…",

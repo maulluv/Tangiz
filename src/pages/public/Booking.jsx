@@ -18,6 +18,8 @@ export default function Booking() {
 
   const [step, setStep] = useState("form"); // form | done
   const [accountExists, setAccountExists] = useState(false);
+  // id створеного запису — потрібен для посилання на бота (нагадування за годину).
+  const [bookingId, setBookingId] = useState("");
 
   const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
@@ -85,8 +87,10 @@ export default function Booking() {
         telegram,
         serviceId: service.id,
         date: slot,
+        lang, // якою мовою бот писатиме людині в Telegram
       });
       setAccountExists(!!res.accountExists);
+      setBookingId(res.booking?.id ?? "");
       setStep("done");
     } catch (err) {
       setSubmitError(err.message || t("booking.submitError"));
@@ -344,20 +348,29 @@ export default function Booking() {
 
             <p className="mt-3 text-xs text-muted">{t("booking.simNote")}</p>
 
+            {/* Нагадування за годину: бот дізнається чат пацієнта з payload'у /start. */}
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-brand-100 bg-brand-50 p-3">
+              <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-brand-600">
+                <span aria-hidden="true">⏰</span>
+              </div>
+              <div>
+                <div className="text-sm font-semibold">{t("booking.remindTitle")}</div>
+                <p className="mt-0.5 text-sm text-muted">{t("booking.remindText")}</p>
+              </div>
+            </div>
+
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              {tg && (
-                <a
-                  href={CLINIC.botUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="sm:flex-1"
-                >
-                  <Button variant="outline" className="w-full">
-                    <TelegramIcon width={18} height={18} />
-                    {t("common.openBot")}
-                  </Button>
-                </a>
-              )}
+              <a
+                href={bookingId ? `${CLINIC.botUrl}?start=r_${bookingId}` : CLINIC.botUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="sm:flex-1"
+              >
+                <Button variant="outline" className="w-full">
+                  <TelegramIcon width={18} height={18} />
+                  {bookingId ? t("booking.remindCta") : t("common.openBot")}
+                </Button>
+              </a>
               {user ? (
                 <Button className="sm:flex-1" onClick={() => navigate("/cabinet")}>
                   {t("booking.goCabinet")}

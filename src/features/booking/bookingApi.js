@@ -7,9 +7,10 @@ export function getAvailability() {
 }
 
 // Створити запис із сайту. Сервер сам порахує ціну й тривалість, позначить слот зайнятим.
+// `lang` — мова сайту в момент запису: нею Telegram-бот далі пише нагадування й статуси.
 // Повертає { booking, accountExists }.
-export function createBooking({ name, phone, telegram, serviceId, date }) {
-  return apiPost("/bookings", { name, phone, telegram, serviceId, date });
+export function createBooking({ name, phone, telegram, serviceId, date, lang }) {
+  return apiPost("/bookings", { name, phone, telegram, serviceId, date, lang });
 }
 
 // Мої записи (потрібен токен) — для кабінету.
