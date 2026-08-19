@@ -26,6 +26,26 @@ export async function createSlots(serviceId, dates) {
   return created;
 }
 
+// Скасувати запис: статус → "canceled" і, якщо був прив'язаний слот, звільнити його.
+// Разом зі `booked: false` ОБОВ'ЯЗКОВО прибираємо `slotId` із запису: поле унікальне,
+// тож інакше слот виглядає вільним, але зайняти його вже не вдасться (P2002).
+// Обидві зміни в одній транзакції — щоб слот не «завис» напівзвільненим.
+export async function cancelBooking(bookingId) {
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (!booking) return null;
+
+  const [updated] = await prisma.$transaction([
+    prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: "canceled", slotId: null },
+    }),
+    ...(booking.slotId
+      ? [prisma.slot.update({ where: { id: booking.slotId }, data: { booked: false } })]
+      : []),
+  ]);
+  return updated;
+}
+
 // Видалити вільний слот. Зайнятий видалити не можна.
 // Повертає { ok } або { ok:false, reason: "not_found" | "booked" }.
 export async function deleteFreeSlot(id) {

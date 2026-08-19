@@ -9,6 +9,7 @@
     "start": "node --env-file=.env src/index.js",
     "seed": "node --env-file=.env prisma/seed.js",
     "bot:check": "node --env-file=.env scripts/check-bot.js",
+    "bot:setup": "node --env-file=.env scripts/setup-bot.js",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio"
   },

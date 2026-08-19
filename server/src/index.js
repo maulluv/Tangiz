@@ -1,4 +1,7 @@
 // Точка входу API-сервера TANGIZ.
+// time.js — ПЕРШИМ імпортом: він виставляє часовий пояс клініки (CLINIC_TZ) для всього
+// процесу, і зробити це треба до того, як інші модулі почнуть працювати з датами.
+import { CLINIC_TZ } from "./time.js";
 import express from "express";
 import cors from "cors";
 import { startBot } from "./bot.js";
@@ -41,6 +44,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`🚀 TANGIZ API на http://localhost:${PORT}`);
+  console.log(`🚀 TANGIZ API на http://localhost:${PORT} (час клініки: ${CLINIC_TZ})`);
   startBot(); // без TELEGRAM_BOT_TOKEN — тихо вимкнено
 });

@@ -4,7 +4,8 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { asyncHandler, normalizePhone, normalizeTg, isValidPhone } from "../utils.js";
 import { requireAuth, requireOwner } from "../auth.js";
-import { listFutureSlots, createSlots, deleteFreeSlot } from "../slotsLib.js";
+import { listFutureSlots, createSlots, deleteFreeSlot, cancelBooking } from "../slotsLib.js";
+import { notifyClientBookingStatus } from "../bot.js";
 
 const router = Router();
 router.use(requireAuth, requireOwner);
@@ -54,14 +55,23 @@ router.patch(
     const booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
     if (!booking) return res.status(404).json({ error: "Запис не знайдено." });
 
-    const updated = await prisma.booking.update({
+    if (status === "canceled") {
+      await cancelBooking(booking.id); // звільняє слот і відв'язує його від запису
+    } else {
+      await prisma.booking.update({ where: { id: booking.id }, data: { status } });
+    }
+    // Пацієнту пишемо про підтвердження/скасування — так само, як із кнопок у боті
+    // (сам notifyClientBookingStatus мовчить, якщо статус інший або бот вимкнено).
+    if (status !== booking.status) {
+      notifyClientBookingStatus(booking.id, status).catch((e) =>
+        console.error("Не вдалося сповістити пацієнта:", e.message),
+      );
+    }
+
+    const updated = await prisma.booking.findUnique({
       where: { id: booking.id },
-      data: { status },
       include: { user: true },
     });
-    if (status === "canceled" && booking.slotId) {
-      await prisma.slot.update({ where: { id: booking.slotId }, data: { booked: false } });
-    }
     res.json(apptDTO(updated));
   }),
 );
