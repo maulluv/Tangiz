@@ -8,7 +8,7 @@ import { cn } from "@/utils/cn";
 import { useAuth, normalizeTg, formatPhone, isValidPhone } from "@/features/auth";
 import { useClinic } from "@/features/clinic";
 import { useI18n } from "@/i18n";
-import { getAvailability, createBooking } from "@/features/booking";
+import { getAvailability, createBooking, getPaymentConfig } from "@/features/booking";
 
 export default function Booking() {
   const navigate = useNavigate();
@@ -30,6 +30,10 @@ export default function Booking() {
   const [availability, setAvailability] = useState(null); // null = ще вантажимо
   const [availError, setAvailError] = useState(false);
 
+  // Налаштування передоплати з сервера: { mode, holdMin, deposits: { s1: 200… } }.
+  // Поки не завантажились (або оплату вимкнено) — форма поводиться як раніше.
+  const [payment, setPayment] = useState(null);
+
   const [phoneErr, setPhoneErr] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -39,6 +43,18 @@ export default function Booking() {
   const [password2, setPassword2] = useState("");
   const [pwError, setPwError] = useState("");
   const [pwSubmitting, setPwSubmitting] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    getPaymentConfig()
+      .then((cfg) => alive && setPayment(cfg.mode === "off" ? null : cfg))
+      .catch(() => {
+        /* оплата не налаштована — просто не показуємо блок передоплати */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Вільні слоти тягнемо з сервера. Перший слот поточної послуги обираємо одразу.
   useEffect(() => {
@@ -60,6 +76,8 @@ export default function Booking() {
   }, []);
 
   const service = services.find((s) => s.id === serviceId);
+  // Передоплата за обрану послугу (0 — коли оплату вимкнено або сервер її не порахував).
+  const deposit = payment?.deposits?.[serviceId] ?? 0;
   const slots = availability?.[serviceId] ?? [];
   const hasSlots = slots.length > 0;
   const tg = normalizeTg(telegram); // опційно
@@ -89,6 +107,12 @@ export default function Booking() {
         date: slot,
         lang, // якою мовою бот писатиме людині в Telegram
       });
+      // Потрібна передоплата — ведемо людину в касу. Статус запису зміниться не тут,
+      // а вебхуком від банку; сторінка /booking/return лише питає сервер про результат.
+      if (res.payment?.checkoutUrl) {
+        window.location.href = res.payment.checkoutUrl;
+        return;
+      }
       setAccountExists(!!res.accountExists);
       setBookingId(res.booking?.id ?? "");
       setStep("done");
@@ -254,13 +278,35 @@ export default function Booking() {
                     <p className="text-sm font-medium text-danger">{submitError}</p>
                   )}
 
-                  <div className="flex items-center justify-between border-t border-border pt-3">
+                  {/* Передоплата: сума входить у вартість прийому, решта — на місці. */}
+                  {deposit > 0 && (
+                    <div className="rounded-xl border border-brand-100 bg-brand-50 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">{t("booking.depositTitle")}</span>
+                        <span className="font-semibold text-brand-600">{uah(deposit)}</span>
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-muted">
+                        {t("booking.depositNote", {
+                          rest: uah(service.price - deposit),
+                          min: payment?.holdMin ?? 15,
+                        })}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-sm text-muted">
-                      {t("booking.toPay")}{" "}
-                      <span className="font-semibold text-ink">{uah(service.price)}</span>
+                      {deposit > 0 ? t("booking.toPayNow") : t("booking.toPay")}{" "}
+                      <span className="font-semibold text-ink">
+                        {uah(deposit > 0 ? deposit : service.price)}
+                      </span>
                     </span>
-                    <Button type="submit" disabled={submitting}>
-                      {submitting ? t("reviews.submitting") : t("booking.submit")}
+                    <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+                      {submitting
+                        ? t("reviews.submitting")
+                        : deposit > 0
+                          ? t("booking.submitPay")
+                          : t("booking.submit")}
                     </Button>
                   </div>
                 </>
@@ -359,25 +405,26 @@ export default function Booking() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            {/* Сітка з items-stretch тримає обидві кнопки однакової висоти,
+                навіть коли довша назва переноситься у два рядки. */}
+            <div className="mt-5 grid items-stretch gap-2 sm:grid-cols-2">
               <a
                 href={bookingId ? `${CLINIC.botUrl}?start=r_${bookingId}` : CLINIC.botUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="sm:flex-1"
               >
-                <Button variant="outline" className="w-full">
-                  <TelegramIcon width={18} height={18} />
+                <Button variant="outline" className="h-full w-full">
+                  <TelegramIcon width={18} height={18} className="shrink-0" />
                   {bookingId ? t("booking.remindCta") : t("common.openBot")}
                 </Button>
               </a>
               {user ? (
-                <Button className="sm:flex-1" onClick={() => navigate("/cabinet")}>
+                <Button className="h-full w-full" onClick={() => navigate("/cabinet")}>
                   {t("booking.goCabinet")}
                 </Button>
               ) : accountExists ? (
-                <Link to="/login" className="sm:flex-1">
-                  <Button className="w-full">{t("login.submit")}</Button>
+                <Link to="/login">
+                  <Button className="h-full w-full">{t("login.submit")}</Button>
                 </Link>
               ) : null}
             </div>

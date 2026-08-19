@@ -37,7 +37,8 @@ export async function cancelBooking(bookingId) {
   const [updated] = await prisma.$transaction([
     prisma.booking.update({
       where: { id: booking.id },
-      data: { status: "canceled", slotId: null },
+      // holdUntil прибираємо разом зі слотом: скасований запис нічого не тримає.
+      data: { status: "canceled", slotId: null, holdUntil: null },
     }),
     ...(booking.slotId
       ? [prisma.slot.update({ where: { id: booking.slotId }, data: { booked: false } })]

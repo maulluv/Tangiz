@@ -8,6 +8,7 @@ import About from "@/pages/public/About";
 import Services from "@/pages/public/Services";
 import Reviews from "@/pages/public/Reviews";
 import Booking from "@/pages/public/Booking";
+import BookingReturn from "@/pages/public/BookingReturn";
 import Login from "@/pages/public/Login";
 import Cabinet from "@/pages/public/Cabinet";
 
@@ -29,6 +30,7 @@ export default function AppRoutes() {
         <Route path="/services" element={<Services />} />
         <Route path="/reviews" element={<Reviews />} />
         <Route path="/booking" element={<Booking />} />
+        <Route path="/booking/return" element={<BookingReturn />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cabinet" element={<Cabinet />} />
       </Route>
