@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Button, Card } from "@/components/ui";
 import { PhoneIcon, TelegramIcon } from "@/components/icons";
 import { bookingRules, cancellationPolicy, services } from "@/data";
@@ -8,31 +8,37 @@ import { cn } from "@/utils/cn";
 import { useAuth, normalizeTg, formatPhone, isValidPhone } from "@/features/auth";
 import { useClinic } from "@/features/clinic";
 import { useI18n } from "@/i18n";
-import { getAvailability, createBooking, getPaymentConfig } from "@/features/booking";
+import { getAvailability, createBooking } from "@/features/booking";
+import BookingConfirmStep from "./BookingConfirmStep";
 
 export default function Booking() {
   const navigate = useNavigate();
+  // З головної приходимо з ?service=s1 і, можливо, &slot=<ISO> — одразу обираємо їх.
+  const [params] = useSearchParams();
+  const wantedService = services.some((s) => s.id === params.get("service"))
+    ? params.get("service")
+    : services[0].id;
+  const wantedSlot = params.get("slot");
   const { user, registerClient } = useAuth();
   const { t, lang } = useI18n();
   const CLINIC = useClinic();
 
   const [step, setStep] = useState("form"); // form | done
   const [accountExists, setAccountExists] = useState(false);
-  // id створеного запису — потрібен для посилання на бота (нагадування за годину).
+  // id створеного запису — потрібен для посилання на бота (підтвердження й нагадування).
   const [bookingId, setBookingId] = useState("");
+  // Крок «підтвердьте в Telegram» від сервера: { holdUntil, alreadyLinked, botUrl }.
+  // null — бот вимкнено, запис іде лікарю без підтвердження пацієнтом.
+  const [confirm, setConfirm] = useState(null);
 
   const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [telegram, setTelegram] = useState(user?.telegram ?? "");
-  const [serviceId, setServiceId] = useState(services[0].id);
+  const [serviceId, setServiceId] = useState(wantedService);
   const [slot, setSlot] = useState("");
 
   const [availability, setAvailability] = useState(null); // null = ще вантажимо
   const [availError, setAvailError] = useState(false);
-
-  // Налаштування передоплати з сервера: { mode, holdMin, deposits: { s1: 200… } }.
-  // Поки не завантажились (або оплату вимкнено) — форма поводиться як раніше.
-  const [payment, setPayment] = useState(null);
 
   const [phoneErr, setPhoneErr] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -44,26 +50,19 @@ export default function Booking() {
   const [pwError, setPwError] = useState("");
   const [pwSubmitting, setPwSubmitting] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    getPaymentConfig()
-      .then((cfg) => alive && setPayment(cfg.mode === "off" ? null : cfg))
-      .catch(() => {
-        /* оплата не налаштована — просто не показуємо блок передоплати */
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
   // Вільні слоти тягнемо з сервера. Перший слот поточної послуги обираємо одразу.
+  // reloadKey — повторне завантаження після «Обрати час ще раз» (бронь знято).
+  const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
     let alive = true;
+    setAvailability(null);
+    setAvailError(false);
     getAvailability()
       .then((data) => {
         if (!alive) return;
         setAvailability(data);
-        setSlot((data[services[0].id] ?? [])[0] ?? "");
+        const list = data[serviceId] ?? [];
+        setSlot(list.includes(wantedSlot) ? wantedSlot : (list[0] ?? ""));
       })
       .catch(() => {
         if (!alive) return;
@@ -73,11 +72,22 @@ export default function Booking() {
     return () => {
       alive = false;
     };
-  }, []);
+    // serviceId свідомо не в залежностях: зміну послуги обробляє handleServiceChange.
+  }, [reloadKey]);
+
+  // Новий крок — з початку сторінки (на телефоні форма довга, інакше лишаємось внизу).
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
+
+  function handleRetry() {
+    setStep("form");
+    setConfirm(null);
+    setBookingId("");
+    setReloadKey((k) => k + 1);
+  }
 
   const service = services.find((s) => s.id === serviceId);
-  // Передоплата за обрану послугу (0 — коли оплату вимкнено або сервер її не порахував).
-  const deposit = payment?.deposits?.[serviceId] ?? 0;
   const slots = availability?.[serviceId] ?? [];
   const hasSlots = slots.length > 0;
   const tg = normalizeTg(telegram); // опційно
@@ -107,12 +117,7 @@ export default function Booking() {
         date: slot,
         lang, // якою мовою бот писатиме людині в Telegram
       });
-      // Потрібна передоплата — ведемо людину в касу. Статус запису зміниться не тут,
-      // а вебхуком від банку; сторінка /booking/return лише питає сервер про результат.
-      if (res.payment?.checkoutUrl) {
-        window.location.href = res.payment.checkoutUrl;
-        return;
-      }
+      setConfirm(res.confirm ?? null);
       setAccountExists(!!res.accountExists);
       setBookingId(res.booking?.id ?? "");
       setStep("done");
@@ -278,35 +283,19 @@ export default function Booking() {
                     <p className="text-sm font-medium text-danger">{submitError}</p>
                   )}
 
-                  {/* Передоплата: сума входить у вартість прийому, решта — на місці. */}
-                  {deposit > 0 && (
-                    <div className="rounded-xl border border-brand-100 bg-brand-50 p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold">{t("booking.depositTitle")}</span>
-                        <span className="font-semibold text-brand-600">{uah(deposit)}</span>
-                      </div>
-                      <p className="mt-1 text-xs leading-relaxed text-muted">
-                        {t("booking.depositNote", {
-                          rest: uah(service.price - deposit),
-                          min: payment?.holdMin ?? 15,
-                        })}
-                      </p>
-                    </div>
-                  )}
+                  {/* Наступний крок — підтвердження в боті: кажемо про нього заздалегідь. */}
+                  <p className="flex items-center gap-2 rounded-xl bg-brand-50 px-3 py-2 text-xs text-brand-700">
+                    <TelegramIcon width={16} height={16} className="shrink-0" />
+                    {t("booking.submitHint")}
+                  </p>
 
                   <div className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-sm text-muted">
-                      {deposit > 0 ? t("booking.toPayNow") : t("booking.toPay")}{" "}
-                      <span className="font-semibold text-ink">
-                        {uah(deposit > 0 ? deposit : service.price)}
-                      </span>
+                      {t("booking.toPay")}{" "}
+                      <span className="font-semibold text-ink">{uah(service.price)}</span>
                     </span>
                     <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
-                      {submitting
-                        ? t("reviews.submitting")
-                        : deposit > 0
-                          ? t("booking.submitPay")
-                          : t("booking.submit")}
+                      {submitting ? t("reviews.submitting") : t("booking.submit")}
                     </Button>
                   </div>
                 </>
@@ -359,8 +348,28 @@ export default function Booking() {
         </div>
       )}
 
-      {/* КРОК 2 — підтвердження запису */}
-      {step === "done" && (
+      {/* КРОК 2а — пацієнт підтверджує запис у Telegram, далі лікар */}
+      {step === "done" && confirm && (
+        <div className="mx-auto max-w-xl">
+          <BookingConfirmStep
+            bookingId={bookingId}
+            confirm={confirm}
+            service={service}
+            slot={slot}
+            onRetry={handleRetry}
+          />
+          {user && (
+            <div className="mt-4 text-center">
+              <Button variant="outline" onClick={() => navigate("/cabinet")}>
+                {t("booking.goCabinet")}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* КРОК 2б — бот вимкнено: запис одразу пішов лікарю */}
+      {step === "done" && !confirm && (
         <div className="mx-auto max-w-xl">
           <h1 className="text-2xl font-bold tracking-tight">
             {accountExists ? t("booking.doneReturningTitle") : t("booking.doneNewTitle")}
@@ -429,58 +438,60 @@ export default function Booking() {
               ) : null}
             </div>
           </Card>
+        </div>
+      )}
 
-          {/* Новий клієнт — опційно створити доступ до кабінету (пароль). */}
-          {!user && !accountExists && (
-            <Card className="mt-4 p-6">
-              <h2 className="font-semibold">{t("booking.registerTitle")}</h2>
-              <p className="mt-1 text-sm text-muted">{t("booking.registerSubtitle")}</p>
+      {/* Новий клієнт — опційно створити доступ до кабінету (пароль) — в обох варіантах. */}
+      {step === "done" && !user && !accountExists && (
+        <div className="mx-auto max-w-xl">
+          <Card className="mt-4 p-6">
+            <h2 className="font-semibold">{t("booking.registerTitle")}</h2>
+            <p className="mt-1 text-sm text-muted">{t("booking.registerSubtitle")}</p>
 
-              <form onSubmit={handleSetPassword} className="mt-4 space-y-3">
-                <div className="flex items-center gap-2 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-700">
-                  <PhoneIcon width={18} height={18} />
-                  <span className="font-medium">{phone}</span>
-                </div>
+            <form onSubmit={handleSetPassword} className="mt-4 space-y-3">
+              <div className="flex items-center gap-2 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-700">
+                <PhoneIcon width={18} height={18} />
+                <span className="font-medium">{phone}</span>
+              </div>
 
-                <div>
-                  <label className="text-sm font-medium text-muted">{t("booking.password")}</label>
-                  <input
-                    required
-                    type="password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setPwError("");
-                    }}
-                    className={inputCls}
-                  />
-                  <p className="mt-1 text-xs text-muted">{t("booking.passwordHint")}</p>
-                </div>
+              <div>
+                <label className="text-sm font-medium text-muted">{t("booking.password")}</label>
+                <input
+                  required
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setPwError("");
+                  }}
+                  className={inputCls}
+                />
+                <p className="mt-1 text-xs text-muted">{t("booking.passwordHint")}</p>
+              </div>
 
-                <div>
-                  <label className="text-sm font-medium text-muted">{t("booking.passwordConfirm")}</label>
-                  <input
-                    required
-                    type="password"
-                    value={password2}
-                    onChange={(e) => {
-                      setPassword2(e.target.value);
-                      setPwError("");
-                    }}
-                    className={inputCls}
-                  />
-                </div>
+              <div>
+                <label className="text-sm font-medium text-muted">{t("booking.passwordConfirm")}</label>
+                <input
+                  required
+                  type="password"
+                  value={password2}
+                  onChange={(e) => {
+                    setPassword2(e.target.value);
+                    setPwError("");
+                  }}
+                  className={inputCls}
+                />
+              </div>
 
-                {pwError && <p className="text-sm font-medium text-danger">{pwError}</p>}
+              {pwError && <p className="text-sm font-medium text-danger">{pwError}</p>}
 
-                <div className="flex justify-end border-t border-border pt-3">
-                  <Button type="submit" disabled={pwSubmitting}>
-                    {pwSubmitting ? t("reviews.submitting") : t("booking.createAccount")}
-                  </Button>
-                </div>
-              </form>
-            </Card>
-          )}
+              <div className="flex justify-end border-t border-border pt-3">
+                <Button type="submit" disabled={pwSubmitting}>
+                  {pwSubmitting ? t("reviews.submitting") : t("booking.createAccount")}
+                </Button>
+              </div>
+            </form>
+          </Card>
         </div>
       )}
     </div>

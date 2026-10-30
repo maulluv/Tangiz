@@ -3,13 +3,14 @@
 //
 // Лікарю:
 //  • /bind <пароль> — прив'язати цей чат як отримувача записів;
-//  • нові записи із сайту з кнопками ✅ Підтвердити / ❌ Скасувати;
+//  • нові записи із сайту (вже підтверджені пацієнтом) з кнопками ✅ Підтвердити / ❌ Скасувати;
 //  • скасування пацієнтом із кабінету — окремим повідомленням;
 //  • /add — додати вільні години на послугу; /slots — переглянути й видалити;
 //  • повідомлення пацієнтів + відповідь реплаєм (TelegramRelay).
 //
-// Пацієнту (якщо він відкрив бота за посиланням із сайту /start r_<id запису>):
-//  • рішення лікаря — «підтверджено» / «скасовано»;
+// Пацієнту (відкриває бота за посиланням із сайту /start r_<id запису> — це обов'язковий крок):
+//  • підтвердження власного запису ✅/❌ — лише після цього запис іде лікарю (див. holds.js);
+//  • рішення лікаря — «ви успішно записані» / «скасовано»;
 //  • нагадування за добу й за годину до візиту;
 //  • усе — його мовою (User.lang із сайту; перемкнути — /lang).
 //
@@ -19,7 +20,7 @@ import { Bot, InlineKeyboard } from "grammy";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db.js";
 import { listFutureSlots, createSlots, deleteFreeSlot, cancelBooking } from "./slotsLib.js";
-import { formatDateTime, formatLongDateTime } from "./time.js";
+import { formatDateTime, formatLongDateTime, formatTime } from "./time.js";
 import { tt, serviceLabel, SERVICE_SHORT, normalizeLang } from "./botText.js";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -104,8 +105,9 @@ async function buildSlotsView() {
 }
 
 // Пацієнт відкрив бота за посиланням із сайту (/start r_<id запису>).
-// Запам'ятовуємо його chatId у профілі — далі зможемо писати першими.
-async function enableRemindersFor(ctx, bookingId) {
+// Запам'ятовуємо його chatId у профілі — далі зможемо писати першими. Якщо запис ще
+// чекає його підтвердження — одразу показуємо кнопки ✅/❌.
+async function linkClientChat(ctx, bookingId) {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     include: { user: true },
@@ -121,6 +123,10 @@ async function enableRemindersFor(ctx, bookingId) {
     data: { telegramChatId: String(ctx.chat.id) },
   });
 
+  if (booking.status === "pending_client") {
+    return sendConfirmRequest(ctx.chat.id, booking);
+  }
+
   if (booking.status === "canceled") {
     return ctx.reply(tt(lang, "remindersOnCanceled"));
   }
@@ -133,6 +139,23 @@ async function enableRemindersFor(ctx, bookingId) {
   );
 }
 
+// Повідомлення пацієнту «підтвердіть запис» з кнопками. booking — з include: { user }.
+async function sendConfirmRequest(chatId, booking) {
+  const lang = normalizeLang(booking.user?.lang);
+  const { doctor, address } = await clinicBits(lang);
+  const kb = new InlineKeyboard()
+    .text(tt(lang, "confirmYes"), `cok:${booking.id}`)
+    .text(tt(lang, "confirmNo"), `cno:${booking.id}`);
+  const text = tt(lang, "confirmAsk", {
+    doctor,
+    address,
+    service: serviceLabel(booking.serviceId, lang),
+    date: formatLongDateTime(booking.date, lang),
+    until: booking.holdUntil ? formatTime(booking.holdUntil, lang) : "",
+  });
+  return bot.api.sendMessage(chatId, text, { reply_markup: kb });
+}
+
 function buildBot() {
   const b = new Bot(TOKEN);
 
@@ -143,10 +166,10 @@ function buildBot() {
   b.command("start", async (ctx) => {
     const owner = await getOwner();
 
-    // Посилання з сайту: t.me/<бот>?start=r_<id запису> — вмикає нагадування пацієнту.
+    // Посилання з сайту: t.me/<бот>?start=r_<id запису> — підтвердження запису й нагадування.
     const payload = (ctx.match || "").trim();
     if (payload.startsWith("r_")) {
-      return enableRemindersFor(ctx, payload.slice(2));
+      return linkClientChat(ctx, payload.slice(2));
     }
 
     if (isOwnerChat(owner, ctx.chat.id)) {
@@ -255,6 +278,54 @@ function buildBot() {
     } catch {
       /* нічого не змінилось — ігноруємо */
     }
+  });
+
+  // Пацієнт підтверджує (cok) або скасовує (cno) свій запис. Лише після ✅ запис іде лікарю.
+  b.callbackQuery(/^(cok|cno):(.+)$/, async (ctx) => {
+    const action = ctx.match[1];
+    const booking = await prisma.booking.findUnique({
+      where: { id: ctx.match[2] },
+      include: { user: true },
+    });
+    // Натиснути може лише той чат, що прив'язаний до власника запису.
+    if (!booking || booking.user?.telegramChatId !== String(ctx.chat?.id)) {
+      return ctx.answerCallbackQuery({ text: tt(await chatLang(ctx.chat?.id), "bookingNotFound") });
+    }
+    const lang = normalizeLang(booking.user.lang);
+    const vars = {
+      service: serviceLabel(booking.serviceId, lang),
+      date: formatDateTime(booking.date, lang),
+    };
+    const finish = async (key) => {
+      await ctx.answerCallbackQuery();
+      try {
+        await ctx.editMessageText(tt(lang, key, vars), { reply_markup: undefined });
+      } catch {
+        await ctx.reply(tt(lang, key, vars));
+      }
+    };
+
+    // Кнопки лишаються під старим повідомленням — реагуємо за поточним станом запису.
+    if (booking.status === "canceled") return finish("confirmTooLate");
+    if (booking.status !== "pending_client") return finish("confirmAlready");
+
+    if (action === "cno") {
+      await cancelBooking(booking.id); // лікар про цей запис ще не знав — йому не пишемо
+      return finish("confirmDeclined");
+    }
+
+    // updateMany з умовою на статус — щоб подвійне натискання не надіслало лікарю дубль.
+    const { count } = await prisma.booking.updateMany({
+      where: { id: booking.id, status: "pending_client" },
+      data: { status: "pending", holdUntil: null },
+    });
+    if (!count) return finish("confirmAlready");
+
+    await finish("confirmSent");
+    const fresh = await prisma.booking.findUnique({ where: { id: booking.id } });
+    await notifyOwnerNewBooking(fresh).catch((e) =>
+      console.error("Не вдалося сповістити власника:", e.description || e.message),
+    );
   });
 
   // Кнопки під повідомленням про запис (підтвердити/скасувати).
@@ -462,6 +533,17 @@ async function sendDueReminders() {
 const markReminded = (bookingId, field) =>
   prisma.booking.update({ where: { id: bookingId }, data: { [field]: new Date() } });
 
+// Посилання на бота з payload'ом для /start, напр. botLink("r_<id запису>").
+// null — бот вимкнено або ще не встиг дізнатися своє ім'я (тоді сайт візьме посилання з профілю клініки).
+export function botLink(payload) {
+  try {
+    const username = bot?.botInfo?.username;
+    return username ? `https://t.me/${username}?start=${payload}` : null;
+  } catch {
+    return null; // botInfo недоступний до bot.init()
+  }
+}
+
 // Запуск (з index.js). Без токена — тихо вимкнено.
 export function startBot() {
   if (!botEnabled) {
@@ -477,33 +559,63 @@ export function startBot() {
   reminderTimer.unref?.(); // не тримати процес живим лише через таймер
 }
 
-// Сповістити власника про новий запис із сайту (routes/bookings.js) або про оплачений
-// запис (payments/index.js — тоді підтверджувати нічого не треба, гроші вже прийшли).
-export async function notifyOwnerNewBooking(booking, { paid = 0 } = {}) {
+// Сповістити власника про новий запис із сайту. Викликається, коли пацієнт уже
+// підтвердив запис у боті (кнопка cok) — отже, людина реальна й на зв'язку.
+export async function notifyOwnerNewBooking(booking) {
   if (!botEnabled || !bot) return;
   const owner = await getOwner();
   if (!owner?.telegramChatId) return; // лікар ще не зробив /bind
 
   const client = await prisma.user.findUnique({ where: { id: booking.userId } });
   const lines = [
-    paid ? "💳 Новий запис — передоплата отримана" : "🆕 Новий запис із сайту",
+    "🆕 Новий запис із сайту",
+    "Пацієнт підтвердив його в Telegram ✔️",
+    "",
     `👤 ${booking.clientName}`,
     client?.phone ? `📞 ${client.phone}` : null,
     client?.telegram ? `✈️ ${client.telegram}` : null,
     normalizeLang(client?.lang) === "en" ? "🇬🇧 Пише англійською" : null,
     `🩺 ${ownerService(booking.serviceId)}`,
     `🗓 ${formatDate(booking.date)}`,
-    paid ? `💰 ${booking.price} грн (сплачено ${paid}, на місці ${booking.price - paid})` : `💰 ${booking.price} грн`,
-  ].filter(Boolean);
+    `💰 ${booking.price} грн`,
+  ].filter((l) => l !== null);
 
-  // Оплачений запис уже підтверджений — лишаємо лише скасування.
-  const kb = paid
-    ? new InlineKeyboard().text("❌ Скасувати", `cancel:${booking.id}`)
-    : new InlineKeyboard()
-        .text("✅ Підтвердити", `confirm:${booking.id}`)
-        .text("❌ Скасувати", `cancel:${booking.id}`);
+  const kb = new InlineKeyboard()
+    .text("✅ Підтвердити", `confirm:${booking.id}`)
+    .text("❌ Скасувати", `cancel:${booking.id}`);
 
   await bot.api.sendMessage(owner.telegramChatId, lines.join("\n"), { reply_markup: kb });
+}
+
+// Попросити пацієнта підтвердити запис (routes/bookings.js), якщо його чат уже відомий —
+// тоді йому навіть не треба переходити за посиланням із сайту.
+export async function requestClientConfirmation(bookingId) {
+  if (!botEnabled || !bot) return;
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { user: true },
+  });
+  if (!booking?.user?.telegramChatId || booking.status !== "pending_client") return;
+  await sendConfirmRequest(booking.user.telegramChatId, booking);
+}
+
+// Пацієнт не підтвердив запис вчасно — його скасовано (holds.js). Кажемо людині чому.
+export async function notifyClientHoldExpired(bookingId) {
+  if (!botEnabled || !bot) return;
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { user: true },
+  });
+  const chatId = booking?.user?.telegramChatId;
+  if (!chatId) return;
+  const lang = normalizeLang(booking.user.lang);
+  await bot.api.sendMessage(
+    chatId,
+    tt(lang, "holdExpired", {
+      service: serviceLabel(booking.serviceId, lang),
+      date: formatDateTime(booking.date, lang),
+    }),
+  );
 }
 
 // Сповістити ПАЦІЄНТА про рішення лікаря (кнопки в боті або статус в адмінці).
@@ -539,38 +651,6 @@ export async function notifyClientBookingStatus(bookingId, status) {
     console.error("Не вдалося сповістити пацієнта:", e.description || e.message);
     return { sent: false, reason: "error" };
   }
-}
-
-// Гроші прийшли, коли бронь уже знято (людина платила довше за таймер). Автоматично
-// повертати кошти не можна — це рішення лікаря, тож просто б'ємо на сполох.
-export async function notifyOwnerPaymentIssue(bookingId, amount) {
-  if (!botEnabled || !bot) return;
-  const owner = await getOwner();
-  if (!owner?.telegramChatId) return;
-
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    include: { user: true },
-  });
-  if (!booking) return;
-
-  await bot.api
-    .sendMessage(
-      owner.telegramChatId,
-      [
-        "⚠️ Оплата надійшла після зняття броні",
-        `👤 ${booking.clientName}`,
-        booking.user?.phone ? `📞 ${booking.user.phone}` : null,
-        `🩺 ${ownerService(booking.serviceId)}`,
-        `🗓 ${formatDate(booking.date)}`,
-        `💳 ${amount} грн`,
-        "",
-        "Час уже вільний для інших. Потрібно повернути кошти або погодити новий час.",
-      ]
-        .filter((l) => l !== null)
-        .join("\n"),
-    )
-    .catch((e) => console.error("Не вдалося сповістити про пізню оплату:", e.description || e.message));
 }
 
 // Сповістити ЛІКАРЯ, що пацієнт скасував запис сам (кабінет на сайті).

@@ -31,3 +31,14 @@ export const timeOnly = (iso) =>
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(iso));
+
+// «пт, 01.11 · 10:00» — коротко для чипів із вільним часом.
+export const slotShort = (iso) => {
+  const d = new Date(iso);
+  const day = new Intl.DateTimeFormat(currentLocale, {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(d);
+  return `${day} · ${timeOnly(iso)}`;
+};

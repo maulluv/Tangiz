@@ -1,8 +1,7 @@
 export {
   getAvailability,
   createBooking,
-  getPaymentConfig,
-  getPaymentStatus,
+  getBookingStatus,
   getMyBookings,
   cancelBooking,
 } from "./bookingApi";
