@@ -19,6 +19,8 @@ const filters = [
 
 // Доступні переходи статусу залежно від поточного.
 const transitions = {
+  // Пацієнт ще не підтвердив запис у боті — лікар може хіба що скасувати.
+  pending_client: ["cancel"],
   pending: ["confirm", "complete", "cancel"],
   confirmed: ["complete", "cancel"],
   completed: [],

@@ -13,6 +13,7 @@ const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getD
 
 // Колір індикатора за статусом запису.
 const dotCls = {
+  pending_client: "bg-violet-400",
   pending: "bg-amber-400",
   confirmed: "bg-brand-500",
   completed: "bg-emerald-500",

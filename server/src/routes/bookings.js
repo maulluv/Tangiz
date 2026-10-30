@@ -4,10 +4,14 @@ import { prisma } from "../db.js";
 import { asyncHandler, normalizePhone, normalizeTg, isValidPhone } from "../utils.js";
 import { normalizeLang } from "../botText.js";
 import { requireAuth } from "../auth.js";
-import { notifyOwnerNewBooking, notifyOwnerClientCanceled } from "../bot.js";
+import {
+  botEnabled,
+  notifyOwnerClientCanceled,
+  requestClientConfirmation,
+  botLink,
+} from "../bot.js";
 import { cancelBooking } from "../slotsLib.js";
-import { depositFor, paymentRequired, HOLD_MIN } from "../payments/config.js";
-import { startCheckout } from "../payments/index.js";
+import { CONFIRM_MIN, holdDeadline } from "../holds.js";
 
 const router = Router();
 
@@ -66,10 +70,10 @@ router.post(
       where: { serviceId: service.id, startsAt: when, booked: false },
     });
 
-    // Передоплата: запис створюється в pending_payment і тримає слот HOLD_MIN хвилин.
-    // Не заплатив — прибиральник (payments/sweeper) поверне час у вільні.
-    const deposit = depositFor(service.price);
-    const needsPayment = paymentRequired && deposit > 0;
+    // Запис спершу має підтвердити сам пацієнт у Telegram-боті (див. holds.js) — до того
+    // слот тримається за ним CONFIRM_MIN хвилин, а лікаря не смикаємо.
+    // Без бота (немає токена в .env) підтвердити нікуди — тоді запис іде лікарю одразу.
+    const needsClientConfirm = botEnabled;
 
     let booking;
     try {
@@ -82,8 +86,8 @@ router.post(
           date: when,
           durationMin: service.durationMin,
           price: service.price,
-          status: needsPayment ? "pending_payment" : "pending",
-          holdUntil: needsPayment ? new Date(Date.now() + HOLD_MIN * 60_000) : null,
+          status: needsClientConfirm ? "pending_client" : "pending",
+          holdUntil: needsClientConfirm ? holdDeadline() : null,
           source: "site",
         },
       });
@@ -100,23 +104,46 @@ router.post(
       await prisma.slot.update({ where: { id: slot.id }, data: { booked: true } });
     }
 
-    // Оплата попереду — лікаря не смикаємо: він дізнається про запис, коли прийдуть гроші.
-    if (needsPayment) {
-      const { checkoutUrl } = await startCheckout(booking, deposit);
+    const accountExists = !!existing?.passwordHash;
+
+    if (needsClientConfirm) {
+      // Людина вже колись відкривала бота — просимо підтвердити одразу, без посилання.
+      const alreadyLinked = !!user.telegramChatId;
+      if (alreadyLinked) {
+        requestClientConfirmation(booking.id).catch((e) =>
+          console.error("Не вдалося попросити пацієнта підтвердити запис:", e.message),
+        );
+      }
       return res.status(201).json({
         booking,
-        accountExists: !!existing?.passwordHash,
-        payment: { amount: deposit, checkoutUrl, holdMin: HOLD_MIN },
+        accountExists,
+        confirm: {
+          holdMin: CONFIRM_MIN,
+          holdUntil: booking.holdUntil,
+          alreadyLinked,
+          botUrl: botLink(`r_${booking.id}`),
+        },
       });
     }
 
-    // Сповіщаємо власника в Telegram (не блокуючи відповідь; тихо ігноруємо помилки).
-    notifyOwnerNewBooking(booking).catch((e) =>
-      console.error("Не вдалося сповістити власника:", e.message),
-    );
-
+    // Бот вимкнено: запис одразу «pending», лікар побачить його в адмінці.
     // accountExists → чи має цей телефон уже акаунт із паролем (для UI на екрані "готово").
-    res.status(201).json({ booking, accountExists: !!existing?.passwordHash });
+    res.status(201).json({ booking, accountExists, confirm: null });
+  }),
+);
+
+// Стан запису для екрана «готово» на сайті: сторінка опитує його, поки пацієнт
+// підтверджує запис у боті, а потім — поки лікар його розглядає.
+// Публічно, але віддаємо лише статус (id запису — довгий випадковий cuid).
+router.get(
+  "/:id/status",
+  asyncHandler(async (req, res) => {
+    const booking = await prisma.booking.findUnique({
+      where: { id: req.params.id },
+      select: { status: true, holdUntil: true },
+    });
+    if (!booking) return res.status(404).json({ error: "Запис не знайдено." });
+    res.json(booking);
   }),
 );
 
@@ -143,12 +170,14 @@ router.post(
       return res.status(404).json({ error: "Запис не знайдено." });
     }
 
-    const wasActive = booking.status !== "canceled";
+    // Лікар дізнається про запис лише після підтвердження пацієнтом — до того
+    // повідомляти його про скасування нема чого.
+    const ownerKnew = !["canceled", "pending_client"].includes(booking.status);
     const updated = await cancelBooking(booking.id);
 
     // Лікар має побачити, що час звільнився (раніше слот тихо ставав вільним).
     // Повторне скасування вже скасованого — мовчки, щоб не смикати лікаря двічі.
-    if (wasActive) {
+    if (ownerKnew) {
       notifyOwnerClientCanceled(booking.id).catch((e) =>
         console.error("Не вдалося сповістити лікаря про скасування:", e.message),
       );

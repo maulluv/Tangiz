@@ -25,8 +25,8 @@ const TEXT = {
     startPatient:
       "Вітаю! Це бот клініки TANGIZ.\n\n" +
       "Записатися на прийом найзручніше на сайті — там видно всі вільні години.\n" +
-      "Після запису поверніться сюди за посиланням із сайту — і ми нагадаємо про візит " +
-      "за добу й за годину.\n" +
+      "Після запису сайт дасть посилання сюди: тут ви підтвердите запис, отримаєте відповідь " +
+      "лікаря й нагадування за добу й за годину до візиту.\n" +
       "Можете також написати сюди: лікар отримає ваше повідомлення й відповість.",
     remindersOn:
       "✅ Готово! Нагадаємо про візит за добу й за годину, а також напишемо, коли лікар " +
@@ -38,9 +38,26 @@ const TEXT = {
     msgAck:
       "Дякуємо за звернення! Щоб записатися на прийом, скористайтеся сайтом. " +
       "Лікар отримав ваше повідомлення й відповість найближчим часом.",
+    confirmAsk:
+      "Майже готово! Підтвердіть, будь ласка, свій запис{doctor}:\n\n🩺 {service}\n🗓 {date}{address}\n\n" +
+      "Час тримається за вами до {until}. Після підтвердження запис піде лікарю, " +
+      "і ми напишемо, щойно він його погодить.",
+    confirmYes: "✅ Підтверджую",
+    confirmNo: "❌ Скасувати",
+    confirmSent:
+      "✅ Дякуємо! Запис передано лікарю.\n\n🩺 {service}\n🗓 {date}\n\n" +
+      "Напишемо, щойно лікар його підтвердить. Нагадаємо про візит за добу й за годину.",
+    confirmDeclined: "Запис скасовано, час знову вільний. Записатися на інший можна на сайті.",
+    confirmTooLate:
+      "На жаль, час на підтвердження вийшов і цей запис скасовано.\n" +
+      "Оберіть, будь ласка, час на сайті ще раз.",
+    confirmAlready: "Цей запис уже підтверджено вами. Ми напишемо, щойно лікар його погодить.",
+    holdExpired:
+      "⌛ Запис не підтвердили вчасно, тому його скасовано, а час знову вільний.\n\n" +
+      "🩺 {service}\n🗓 {date}\n\nЯкщо ще актуально — оберіть час на сайті ще раз.",
     doctorReply: "👨‍⚕️ Відповідь лікаря:",
     confirmed:
-      "✅ Запис підтверджено{doctor}\n\n🩺 {service}\n🗓 {date}{address}\n\n" +
+      "🎉 Ви успішно записані{doctor}!\n\n🩺 {service}\n🗓 {date}{address}\n\n" +
       "Чекаємо на вас. Якщо плани зміняться — напишіть сюди.",
     canceled:
       "❌ На жаль, цей запис скасовано.\n\n🩺 {service}\n🗓 {date}\n\n" +
@@ -59,8 +76,8 @@ const TEXT = {
     startPatient:
       "Hello! This is the TANGIZ clinic bot.\n\n" +
       "The easiest way to book is on the website — it shows every free hour.\n" +
-      "After booking, come back here via the link on the site and we'll remind you " +
-      "a day and an hour before your visit.\n" +
+      "After booking, the site gives you a link here: you confirm the appointment, get the " +
+      "doctor's answer and reminders a day and an hour before the visit.\n" +
       "You can also write here: the doctor will get your message and reply.",
     remindersOn:
       "✅ All set! We'll remind you a day and an hour before your visit, and message you " +
@@ -73,9 +90,26 @@ const TEXT = {
     msgAck:
       "Thanks for reaching out! To book an appointment, please use the website. " +
       "The doctor has received your message and will reply shortly.",
+    confirmAsk:
+      "Almost done! Please confirm your appointment{doctor}:\n\n🩺 {service}\n🗓 {date}{address}\n\n" +
+      "The slot is held for you until {until}. Once you confirm, it goes to the doctor " +
+      "and we'll message you as soon as it's approved.",
+    confirmYes: "✅ Confirm",
+    confirmNo: "❌ Cancel",
+    confirmSent:
+      "✅ Thank you! Your appointment has been sent to the doctor.\n\n🩺 {service}\n🗓 {date}\n\n" +
+      "We'll message you once the doctor confirms it, and remind you a day and an hour before.",
+    confirmDeclined: "The appointment was canceled and the slot is free again. You can book another time on the website.",
+    confirmTooLate:
+      "Unfortunately, the time to confirm has run out and this appointment was canceled.\n" +
+      "Please pick a time on the website again.",
+    confirmAlready: "You've already confirmed this appointment. We'll message you once the doctor approves it.",
+    holdExpired:
+      "⌛ The appointment wasn't confirmed in time, so it was canceled and the slot is free again.\n\n" +
+      "🩺 {service}\n🗓 {date}\n\nIf it's still relevant — pick a time on the website again.",
     doctorReply: "👨‍⚕️ Reply from the doctor:",
     confirmed:
-      "✅ Appointment confirmed{doctor}\n\n🩺 {service}\n🗓 {date}{address}\n\n" +
+      "🎉 You're booked{doctor}!\n\n🩺 {service}\n🗓 {date}{address}\n\n" +
       "See you there. If your plans change — write here.",
     canceled:
       "❌ Unfortunately, this appointment has been canceled.\n\n🩺 {service}\n🗓 {date}\n\n" +
