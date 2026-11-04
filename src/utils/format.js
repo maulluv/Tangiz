@@ -1,5 +1,9 @@
 let currentLocale = "uk-UA";
 
+// Прийом — у Києві, тож дати й години показуємо за київським часом незалежно від поясу
+// браузера: інакше пацієнт за кордоном побачив би слот «10:00» як «09:00» (а бот пише 10:00).
+export const CLINIC_TZ = "Europe/Kyiv";
+
 export function setLocale(locale) {
   currentLocale = locale;
 }
@@ -16,6 +20,7 @@ export const dateLong = (iso) =>
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: CLINIC_TZ,
   }).format(new Date(iso));
 
 export const dateTime = (iso) =>
@@ -24,12 +29,14 @@ export const dateTime = (iso) =>
     month: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: CLINIC_TZ,
   }).format(new Date(iso));
 
 export const timeOnly = (iso) =>
   new Intl.DateTimeFormat(currentLocale, {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: CLINIC_TZ,
   }).format(new Date(iso));
 
 // «пт, 01.11 · 10:00» — коротко для чипів із вільним часом.
@@ -39,6 +46,7 @@ export const slotShort = (iso) => {
     weekday: "short",
     day: "2-digit",
     month: "2-digit",
+    timeZone: CLINIC_TZ,
   }).format(d);
   return `${day} · ${timeOnly(iso)}`;
 };

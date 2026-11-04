@@ -21,7 +21,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./db.js";
 import { listFutureSlots, createSlots, deleteFreeSlot, cancelBooking } from "./slotsLib.js";
 import { formatDateTime, formatLongDateTime, formatTime } from "./time.js";
-import { tt, serviceLabel, SERVICE_SHORT, normalizeLang } from "./botText.js";
+import { tt, serviceLabel, SERVICE_SHORT, normalizeLang, doctorNameIn } from "./botText.js";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 export const botEnabled = !!TOKEN;
@@ -68,7 +68,7 @@ async function chatLang(chatId) {
 async function clinicBits(lang) {
   const clinic = await prisma.clinicProfile.findUnique({ where: { id: 1 } });
   return {
-    doctor: clinic?.doctorName ? tt(lang, "doctorOf", { name: clinic.doctorName }) : "",
+    doctor: clinic?.doctorName ? tt(lang, "doctorOf", { name: doctorNameIn(clinic.doctorName, lang) }) : "",
     address: clinic?.address ? `\n📍 ${clinic.address}` : "",
   };
 }
@@ -87,7 +87,11 @@ function parseSlotLine(line) {
   let d = new Date(year, mm - 1, dd, hh, min, 0, 0);
   // Без явного року й дата вже минула → беремо наступний рік.
   if (!yyyy && d.getTime() < Date.now()) d = new Date(year + 1, mm - 1, dd, hh, min, 0, 0);
-  return Number.isNaN(d.getTime()) ? null : d;
+  // 31.02 чи 25:00 JS тихо переносить на інший день — такі рядки вважаємо помилкою.
+  if (Number.isNaN(d.getTime()) || d.getDate() !== dd || d.getMonth() !== mm - 1 || hh > 23 || min > 59) {
+    return null;
+  }
+  return d;
 }
 
 // Список вільних слотів із кнопками видалення (для /slots).
@@ -308,6 +312,11 @@ function buildBot() {
     // Кнопки лишаються під старим повідомленням — реагуємо за поточним станом запису.
     if (booking.status === "canceled") return finish("confirmTooLate");
     if (booking.status !== "pending_client") return finish("confirmAlready");
+    // Час на підтвердження вийшов, а прибиральник ще не встиг (він ходить щохвилини).
+    if (action === "cok" && booking.holdUntil && booking.holdUntil < new Date()) {
+      await cancelBooking(booking.id);
+      return finish("confirmTooLate");
+    }
 
     if (action === "cno") {
       await cancelBooking(booking.id); // лікар про цей запис ще не знав — йому не пишемо
@@ -344,6 +353,14 @@ function buildBot() {
     if (booking.status === status) {
       return ctx.answerCallbackQuery({
         text: status === "confirmed" ? "Уже підтверджено." : "Уже скасовано.",
+      });
+    }
+    // Пацієнт скасував запис сам (кабінет) або прийом уже завершено — слот міг зайняти
+    // хтось інший, тож «воскрешати» запис кнопкою зі старого повідомлення не можна.
+    if (booking.status === "canceled" || booking.status === "completed") {
+      return ctx.answerCallbackQuery({
+        text: booking.status === "canceled" ? "Запис уже скасовано." : "Прийом уже завершено.",
+        show_alert: true,
       });
     }
 
@@ -551,7 +568,13 @@ export function startBot() {
     return;
   }
   bot = buildBot();
-  bot.start({ onStart: (info) => console.log(`🤖 Telegram-бот @${info.username} запущено.`) });
+  // Помилку запуску (невірний токен, Telegram недоступний, другий екземпляр бота — 409)
+  // ловимо: без цього необроблений reject валить увесь процес, а з ним і сайт.
+  bot
+    .start({ onStart: (info) => console.log(`🤖 Telegram-бот @${info.username} запущено.`) })
+    .catch((e) =>
+      console.error("❌ Telegram-бот зупинився (сайт працює далі):", e.description || e.message),
+    );
 
   // Нагадування: одразу після старту (раптом щось назріло під час простою) і далі щохвилини.
   sendDueReminders();

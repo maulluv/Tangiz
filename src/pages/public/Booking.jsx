@@ -122,7 +122,9 @@ export default function Booking() {
       setBookingId(res.booking?.id ?? "");
       setStep("done");
     } catch (err) {
-      setSubmitError(err.message || t("booking.submitError"));
+      setSubmitError(err.status === 409 ? t("booking.slotTaken") : err.message || t("booking.submitError"));
+      // Час уже зайняли — оновлюємо список, щоб зайнятий слот зник із вибору.
+      if (err.status === 409) setReloadKey((k) => k + 1);
     } finally {
       setSubmitting(false);
     }
@@ -185,8 +187,9 @@ export default function Booking() {
               </ol>
             </Card>
 
-            {/* Форма запису */}
-            <Card className="p-5">
+            {/* Форма запису. На телефоні — першою: правила й скасування нижче, щоб до полів
+                не треба було гортати. На широкому екрані — по центру між ними. */}
+            <Card className="order-first p-5 lg:order-none">
             <form onSubmit={handleFormSubmit} className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-muted">{t("booking.name")}</label>

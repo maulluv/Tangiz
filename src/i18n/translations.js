@@ -76,6 +76,12 @@ export const translations = {
     "month.apr": "Кві",
     "month.may": "Тра",
     "month.jun": "Чер",
+    "month.jul": "Лип",
+    "month.aug": "Сер",
+    "month.sep": "Вер",
+    "month.oct": "Жов",
+    "month.nov": "Лис",
+    "month.dec": "Гру",
 
     // landing
     "landing.bookCta": "Записатися на прийом",
@@ -203,6 +209,7 @@ export const translations = {
     "booking.loadingSlots": "Завантаження вільних годин…",
     "booking.slotsError": "Не вдалося завантажити вільні години.",
     "booking.submitError": "Не вдалося створити запис. Спробуйте ще раз.",
+    "booking.slotTaken": "Цей час щойно зайняли. Оберіть, будь ласка, інший — список оновлено.",
     "booking.noSlotsTitle": "Наразі вільних віконець немає 😢",
     "booking.noSlots":
       "Уточніть можливість запису найближчим часом в особистому чаті або спробуйте пізніше.",
@@ -331,7 +338,7 @@ export const translations = {
     "apptForm.required": "Заповніть обовʼязкові поля.",
 
     // statuses
-    "status.pending_client": "Чекає вашого підтвердження",
+    "status.pending_client": "Чекає підтвердження в Telegram",
     "booking.confirmTitle": "Лишився один крок — підтвердьте запис у Telegram",
     "booking.confirmSubtitle":
       "Без підтвердження запис не дійде до лікаря. Час тримається за вами до {until}.",
@@ -471,6 +478,12 @@ export const translations = {
     "month.apr": "Apr",
     "month.may": "May",
     "month.jun": "Jun",
+    "month.jul": "Jul",
+    "month.aug": "Aug",
+    "month.sep": "Sep",
+    "month.oct": "Oct",
+    "month.nov": "Nov",
+    "month.dec": "Dec",
 
     // landing
     "landing.bookCta": "Book an appointment",
@@ -597,6 +610,7 @@ export const translations = {
     "booking.loadingSlots": "Loading available times…",
     "booking.slotsError": "Couldn't load available times.",
     "booking.submitError": "Couldn't create the booking. Please try again.",
+    "booking.slotTaken": "This time was just taken. Please pick another one — the list has been updated.",
     "booking.noSlotsTitle": "No free slots right now 😢",
     "booking.noSlots":
       "Check availability soon in a direct chat or try again later.",
@@ -725,7 +739,7 @@ export const translations = {
     "apptForm.required": "Fill in the required fields.",
 
     // statuses
-    "status.pending_client": "Awaiting your confirmation",
+    "status.pending_client": "Awaiting Telegram confirmation",
     "booking.confirmTitle": "One step left — confirm your booking on Telegram",
     "booking.confirmSubtitle":
       "Without confirmation the booking won't reach the doctor. The slot is held for you until {until}.",

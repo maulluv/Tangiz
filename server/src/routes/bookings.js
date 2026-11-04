@@ -65,10 +65,14 @@ router.post(
       user = await prisma.user.update({ where: { id: userId }, data: { lang: clientLang } });
     }
 
-    // Якщо це заброньований слот — знаходимо його й позначаємо зайнятим.
+    // Записатися з сайту можна лише на вільний слот. Немає його (уже зайняли, поки
+    // людина заповнювала форму, або час довільний) — інакше вийшов би подвійний запис.
     const slot = await prisma.slot.findFirst({
       where: { serviceId: service.id, startsAt: when, booked: false },
     });
+    if (!slot || when.getTime() <= Date.now()) {
+      return res.status(409).json({ error: "Цей час уже зайняли. Оберіть, будь ласка, інший." });
+    }
 
     // Запис спершу має підтвердити сам пацієнт у Telegram-боті (див. holds.js) — до того
     // слот тримається за ним CONFIRM_MIN хвилин, а лікаря не смикаємо.
@@ -81,7 +85,7 @@ router.post(
         data: {
           userId: user.id,
           serviceId: service.id,
-          slotId: slot?.id ?? null,
+          slotId: slot.id,
           clientName: cleanName,
           date: when,
           durationMin: service.durationMin,
@@ -100,9 +104,7 @@ router.post(
       throw e;
     }
 
-    if (slot) {
-      await prisma.slot.update({ where: { id: slot.id }, data: { booked: true } });
-    }
+    await prisma.slot.update({ where: { id: slot.id }, data: { booked: true } });
 
     const accountExists = !!existing?.passwordHash;
 
@@ -169,6 +171,12 @@ router.post(
     if (!booking || booking.userId !== req.auth.sub) {
       return res.status(404).json({ error: "Запис не знайдено." });
     }
+
+    // Завершений прийом скасувати не можна; повторне скасування — просто повертаємо як є.
+    if (booking.status === "completed") {
+      return res.status(409).json({ error: "Прийом уже відбувся — скасувати його не можна." });
+    }
+    if (booking.status === "canceled") return res.json(booking);
 
     // Лікар дізнається про запис лише після підтвердження пацієнтом — до того
     // повідомляти його про скасування нема чого.

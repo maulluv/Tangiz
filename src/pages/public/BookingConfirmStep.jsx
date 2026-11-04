@@ -5,7 +5,7 @@ import { PhoneIcon, TelegramIcon } from "@/components/icons";
 import { useClinic } from "@/features/clinic";
 import { useI18n } from "@/i18n";
 import { getBookingStatus } from "@/features/booking";
-import { uah, dateTime } from "@/utils/format";
+import { uah, dateTime, CLINIC_TZ } from "@/utils/format";
 import { cn } from "@/utils/cn";
 
 const POLL_MS = 4000;
@@ -45,6 +45,7 @@ export default function BookingConfirmStep({ bookingId, confirm, service, slot, 
     ? new Date(confirm.holdUntil).toLocaleTimeString(lang === "en" ? "en-GB" : "uk-UA", {
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: CLINIC_TZ,
       })
     : "";
 

@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpIcon, CalendarIcon, ChartIcon, UsersIcon } from "@/components/icons";
 import { Card, StatCard, StatusBadge } from "@/components/ui";
-import { revenueByMonth } from "@/data";
 import { getAppointments, getClients } from "@/features/admin";
 import { dateTime, uah } from "@/utils/format";
 import { useI18n } from "@/i18n";
 
-// Порядок місяців → індекс Date.getMonth() для розкладання живого доходу.
-const MONTH_INDEX = {
-  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-};
+// Ключі перекладів місяців у порядку Date.getMonth().
+const MONTH_KEYS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+// Скільки останніх місяців (разом із поточним) показує графік.
+const CHART_MONTHS = 6;
 
 export default function Dashboard() {
   const { t } = useI18n();
@@ -37,25 +35,31 @@ export default function Dashboard() {
   const totalRevenue = completed.reduce((s, a) => s + a.price, 0);
 
   const upcoming = appointments
-    .filter((a) => a.status === "confirmed" || a.status === "pending")
+    .filter((a) => (a.status === "confirmed" || a.status === "pending") && +new Date(a.date) >= Date.now())
     .sort((a, b) => +new Date(a.date) - +new Date(b.date));
 
-  // Графік: історична база + живий дохід зі стору по місяцях.
+  // Графік: дохід із завершених прийомів за останні CHART_MONTHS місяців (поточний — останній).
   const chart = useMemo(() => {
-    const live = {};
+    const now = new Date();
+    const months = Array.from({ length: CHART_MONTHS }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (CHART_MONTHS - 1 - i), 1);
+      return { y: d.getFullYear(), m: d.getMonth(), key: MONTH_KEYS[d.getMonth()], value: 0 };
+    });
     for (const a of completed) {
-      const month = new Date(a.date).getMonth();
-      const key = Object.keys(MONTH_INDEX).find((k) => MONTH_INDEX[k] === month);
-      if (key) live[key] = (live[key] || 0) + a.price;
+      const d = new Date(a.date);
+      const slot = months.find((x) => x.y === d.getFullYear() && x.m === d.getMonth());
+      if (slot) slot.value += a.price;
     }
-    return revenueByMonth.map((m) => ({ ...m, value: m.value + (live[m.key] || 0) }));
+    return months;
   }, [completed]);
 
-  const maxRev = Math.max(...chart.map((m) => m.value));
+  // max ≥ 1 — щоб порожній графік (ще жодного завершеного прийому) не ділив на нуль.
+  const maxRev = Math.max(1, ...chart.map((m) => m.value));
   const cur = chart.at(-1).value;
   const prev = chart.at(-2).value;
-  const pct = prev ? Math.round(((cur - prev) / prev) * 100) : 0;
-  const revDelta = `${pct >= 0 ? "+" : ""}${pct}%`;
+  // Відсоток показуємо, лише коли є з чим порівнювати.
+  const pct = prev ? Math.round(((cur - prev) / prev) * 100) : null;
+  const revDelta = pct === null ? undefined : `${pct >= 0 ? "+" : ""}${pct}%`;
 
   return (
     <div className="space-y-6">
@@ -97,11 +101,11 @@ export default function Dashboard() {
           </div>
           <div className="mt-6 flex h-52 items-stretch gap-3">
             {chart.map((m) => (
-              <div key={m.key} className="flex flex-1 flex-col items-center gap-2">
+              <div key={`${m.y}-${m.m}`} className="flex flex-1 flex-col items-center gap-2">
                 <div className="flex w-full flex-1 items-end">
                   <div
                     className="w-full rounded-t-md bg-brand-500/85 transition-all hover:bg-brand-600"
-                    style={{ height: `${(m.value / maxRev) * 100}%` }}
+                    style={{ height: `${Math.max((m.value / maxRev) * 100, m.value ? 2 : 0)}%` }}
                     title={uah(m.value)}
                   />
                 </div>

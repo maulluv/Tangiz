@@ -41,7 +41,9 @@ export default function PublicLayout() {
             >
               {menuOpen ? <CloseIcon width={22} height={22} /> : <MenuIcon width={22} height={22} />}
             </button>
-            <Link to="/" className="flex shrink-0 items-center gap-2.5">
+            {/* На найвужчих телефонах (< 360px, напр. iPhone SE) логотип ховаємо — інакше
+                кнопки справа не влазять; на головну веде пункт меню. */}
+            <Link to="/" className="flex shrink-0 items-center gap-2.5 max-[359px]:hidden">
               <div className="grid size-9 place-items-center rounded-xl bg-brand-500 text-white shadow-[var(--shadow-brand)]">
                 <MedicalIcon width={20} height={20} />
               </div>

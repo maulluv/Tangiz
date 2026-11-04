@@ -55,6 +55,17 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* iOS Safari збільшує сторінку при фокусі на полі з шрифтом < 16px (а в нас text-sm = 14px).
+   На сенсорних екранах ставимо полям 16px — без зуму, і текст однаково читається.
+   Правило поза @layer, тож перебиває утиліти Tailwind. */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 /* Акцентне слово курсивом-серифом — фірмовий штрих у стилі 21st.dev */
 .accent {
   font-family: var(--font-serif);

@@ -5,7 +5,7 @@ import { getAppointments, NewAppointmentModal } from "@/features/admin";
 import { timeOnly, uah } from "@/utils/format";
 import { useI18n } from "@/i18n";
 
-const LOCALES = { uk: "uk-UA", en: "en-US" };
+const LOCALES = { uk: "uk-UA", en: "en-GB" };
 
 const pad = (n) => String(n).padStart(2, "0");
 // Дата у форматі YYYY-MM-DD для <input type="date">.
@@ -108,7 +108,7 @@ export default function Calendar() {
     <Card className="overflow-hidden">
       {/* Заголовок: місяць + навігація */}
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
-        <h2 className="text-base font-semibold capitalize sm:text-lg">{monthTitle}</h2>
+        <h2 className="text-base font-semibold first-letter:uppercase sm:text-lg">{monthTitle}</h2>
         <div className="flex items-center gap-1.5">
           <button
             onClick={goToday}

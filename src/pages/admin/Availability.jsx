@@ -7,7 +7,7 @@ import { DateSelect, TimeSelect } from "@/components/DateTimeInputs";
 import { timeOnly } from "@/utils/format";
 import { useI18n } from "@/i18n";
 
-const LOCALES = { uk: "uk-UA", en: "en-US" };
+const LOCALES = { uk: "uk-UA", en: "en-GB" };
 const pad = (n) => String(n).padStart(2, "0");
 const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
@@ -153,7 +153,7 @@ export default function Availability() {
         <div className="space-y-4">
           {groups.map((g) => (
             <Card key={dayKey(g.date)} className="p-4 sm:p-5">
-              <div className="text-sm font-semibold capitalize">{dayLabel(g.date)}</div>
+              <div className="text-sm font-semibold first-letter:uppercase">{dayLabel(g.date)}</div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {g.slots.map((s) =>
                   s.booked ? (

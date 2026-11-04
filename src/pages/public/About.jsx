@@ -23,7 +23,7 @@ const sections = [
 export default function About() {
   const { t, lang } = useI18n();
   const CLINIC = useClinic();
-  const [firstName, ...rest] = CLINIC.doctorName.split(" ");
+  const [firstName, ...rest] = ((lang === "en" ? CLINIC.doctorNameEn : CLINIC.doctorName) || "").split(" ");
   const lastName = rest.join(" ");
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
