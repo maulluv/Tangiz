@@ -35,7 +35,12 @@ export function AuthProvider({ children }) {
 
   // Після перезавантаження: якщо є токен — звіряємо його з сервером і оновлюємо дані.
   useEffect(() => {
-    if (!localStorage.getItem(TOKEN_KEY)) return;
+    // Профіль є, а токена немає (почищене сховище) — це не сесія: інакше шапка показує
+    // «Кабінет», а всі запити падають з 401.
+    if (!localStorage.getItem(TOKEN_KEY)) {
+      if (localStorage.getItem(USER_KEY)) signOut();
+      return;
+    }
     authMe()
       .then(({ user: u }) => {
         localStorage.setItem(USER_KEY, JSON.stringify(u));

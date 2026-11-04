@@ -18,6 +18,11 @@ const SERVICES = {
 export const serviceLabel = (id, lang = "uk") => SERVICES[normalizeLang(lang)][id] || id;
 
 // Короткі назви для списку слотів у лікаря (завжди українською).
+// Ім'я лікаря латиницею для англомовних пацієнтів (те саме, що на сайті — clinicStore.js).
+const EN_NAMES = { "Тенгіз Дадвані": "Tengiz Dadvani" };
+export const doctorNameIn = (name, lang) =>
+  (normalizeLang(lang) === "en" && EN_NAMES[(name || "").trim()]) || name;
+
 export const SERVICE_SHORT = { s1: "Консульт.", s2: "Мануальна", s3: "Терапевт." };
 
 const TEXT = {

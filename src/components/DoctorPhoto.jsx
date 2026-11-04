@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useClinic } from "@/features/clinic";
+import { useI18n } from "@/i18n";
 
 // Картка має пропорції фото (2:3), тож object-cover заповнює її повністю —
 // без обрізання й без смуг. Фолбек — ініціали, якщо файлу /doctor.jpg ще немає.
 export default function DoctorPhoto() {
   const CLINIC = useClinic();
+  const { lang } = useI18n();
   const [error, setError] = useState(false);
 
   if (error) {
@@ -20,7 +22,7 @@ export default function DoctorPhoto() {
   return (
     <img
       src="/doctor.jpg"
-      alt={CLINIC.doctorName}
+      alt={lang === "en" ? CLINIC.doctorNameEn : CLINIC.doctorName}
       onError={() => setError(true)}
       className="absolute inset-0 h-full w-full object-cover"
     />

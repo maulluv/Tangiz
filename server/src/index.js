@@ -39,6 +39,14 @@ app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
 
 // Централізований обробник помилок (сюди потрапляють помилки з asyncHandler).
 app.use((err, req, res, next) => {
+  // Битий JSON у тілі запиту — помилка клієнта, а не сервера.
+  if (err.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "Некоректний запит." });
+  }
+  // Унікальне поле вже зайняте (напр. телефон, що є в іншого клієнта).
+  if (err.code === "P2002") {
+    return res.status(409).json({ error: "Такі дані вже використовуються (напр. номер телефону)." });
+  }
   console.error(err);
   res.status(500).json({ error: "Внутрішня помилка сервера." });
 });

@@ -23,6 +23,7 @@ const GET = ["get1", "get2", "get3", "get4"];
 export default function Landing() {
   const { t, lang } = useI18n();
   const CLINIC = useClinic();
+  const doctorName = lang === "en" ? CLINIC.doctorNameEn : CLINIC.doctorName;
   const [callOpen, setCallOpen] = useState(false);
   const [slots, setSlots] = useState(null); // null — ще вантажимо
   const [reviews, setReviews] = useState([]);
@@ -88,14 +89,14 @@ export default function Landing() {
                 <DoctorPhoto />
               </div>
               <div>
-                <div className="font-semibold">{CLINIC.doctorName}</div>
+                <div className="font-semibold">{doctorName}</div>
                 <div className="text-sm text-muted">{t("clinic.specialty")}</div>
               </div>
             </div>
 
             <span className="hidden flex-wrap items-center gap-x-2 md:inline-flex gap-y-1 rounded-full border border-brand-100 bg-brand-50/70 px-3.5 py-1.5 text-sm font-medium text-brand-700 backdrop-blur">
               <span className="size-1.5 rounded-full bg-brand-500" />
-              {CLINIC.doctorName}
+              {doctorName}
               <span className="text-brand-200" aria-hidden="true">·</span>
               <span className="font-normal">{t("clinic.specialty")}</span>
             </span>

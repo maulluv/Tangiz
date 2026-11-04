@@ -11,7 +11,7 @@ import { setLocale } from "@/utils/format";
 
 const I18nContext = createContext(null);
 const STORAGE_KEY = "tangiz.lang";
-const LOCALES = { uk: "uk-UA", en: "en-US" };
+const LOCALES = { uk: "uk-UA", en: "en-GB" };
 
 function initialLang() {
   const saved = localStorage.getItem(STORAGE_KEY);

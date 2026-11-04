@@ -12,6 +12,16 @@ router.use(requireAuth, requireOwner);
 
 const STATUSES = ["pending", "confirmed", "completed", "canceled"];
 
+// Дозволені переходи статусу (ті самі, що й кнопки в адмінці). Скасований чи завершений
+// запис назад не повертаємо: слот скасованого вже міг зайняти інший пацієнт.
+const TRANSITIONS = {
+  pending_client: ["canceled"],
+  pending: ["confirmed", "completed", "canceled"],
+  confirmed: ["completed", "canceled"],
+  completed: [],
+  canceled: [],
+};
+
 // Booking(+user) → форма, яку очікують сторінки адмінки (з контактами клієнта).
 function apptDTO(b) {
   return {
@@ -54,6 +64,9 @@ router.patch(
     }
     const booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
     if (!booking) return res.status(404).json({ error: "Запис не знайдено." });
+    if (status !== booking.status && !TRANSITIONS[booking.status]?.includes(status)) {
+      return res.status(409).json({ error: "Такий перехід статусу неможливий." });
+    }
 
     if (status === "canceled") {
       await cancelBooking(booking.id); // звільняє слот і відв'язує його від запису
