@@ -136,6 +136,35 @@ try {
     console.log("… Команди (чат лікаря): пропущено — лікар ще не зробив /bind. Запустіть скрипт ще раз після цього.");
   }
 
+  // Залишки попереднього власника токена (конструктора чи іншого сервера). Telegram зберігає
+  // окремі описи й меню для кожної мови та області видимості, і вони ПЕРЕКРИВАЮТЬ наші
+  // загальні — напр. україномовний пацієнт бачив би старий опис. Ми самі задаємо лише
+  // загальні значення, тож усе мовне й інші області просто прибираємо.
+  const LANG_CODES = ["uk", "ru", "en"];
+  for (const lc of LANG_CODES) {
+    for (const [label, getter, field, setter, key] of [
+      ["Назва", "getMyName", "name", "setMyName", "name"],
+      ["Опис", "getMyDescription", "description", "setMyDescription", "description"],
+      ["Короткий опис", "getMyShortDescription", "short_description", "setMyShortDescription", "short_description"],
+    ]) {
+      const cur = (await read(getter, { language_code: lc }))?.[field];
+      if (!cur) continue;
+      if (DRY) console.log(`~ ${label} [${lc}]: ПРИБРАЛОСЬ БИ «${cur.slice(0, 40)}…»`);
+      else await api(setter, { [key]: "", language_code: lc }).then(() => console.log(`✓ ${label} [${lc}]: старе прибрано`));
+    }
+  }
+  const OTHER_SCOPES = ["default", "all_private_chats", "all_group_chats", "all_chat_administrators"];
+  for (const type of OTHER_SCOPES) {
+    for (const lc of type === "default" ? LANG_CODES : [undefined, ...LANG_CODES]) {
+      const body = { scope: { type }, ...(lc && { language_code: lc }) };
+      const cmds = await read("getMyCommands", body);
+      if (!cmds?.length) continue;
+      const where = `${type}${lc ? ` [${lc}]` : ""}`;
+      if (DRY) console.log(`~ Команди ${where}: ПРИБРАЛОСЬ БИ ${cmds.map((c) => "/" + c.command).join(" ")}`);
+      else await api("deleteMyCommands", body).then(() => console.log(`✓ Команди ${where}: старі прибрано`));
+    }
+  }
+
   const menu = await read("getChatMenuButton");
   await apply("Кнопка меню", menu?.type, "commands", "setChatMenuButton", {
     menu_button: { type: "commands" },
