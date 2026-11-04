@@ -5,8 +5,10 @@
   "type": "module",
   "description": "Бекенд TANGIZ — API для сайту та (згодом) Telegram-бота.",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "node --watch --env-file=.env src/index.js",
     "start": "node --env-file=.env src/index.js",
+    "start:prod": "prisma migrate deploy && node prisma/seed-prod.js && node src/index.js",
     "seed": "node --env-file=.env prisma/seed.js",
     "bot:check": "node --env-file=.env scripts/check-bot.js",
     "bot:setup": "node --env-file=.env scripts/setup-bot.js",
@@ -22,9 +24,10 @@
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "grammy": "^1.45.1",
-    "jsonwebtoken": "^9.0.3"
-  },
-  "devDependencies": {
+    "jsonwebtoken": "^9.0.3",
     "prisma": "^6.2.1"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

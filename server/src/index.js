@@ -2,6 +2,9 @@
 // time.js — ПЕРШИМ імпортом: він виставляє часовий пояс клініки (CLINIC_TZ) для всього
 // процесу, і зробити це треба до того, як інші модулі почнуть працювати з датами.
 import { CLINIC_TZ } from "./time.js";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import { startBot } from "./bot.js";
@@ -36,6 +39,15 @@ app.use("/api/bookings", bookingsRouter);
 
 // 404 для невідомих /api-шляхів.
 app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
+
+// На робочому сервері той самий процес віддає і зібраний сайт (npm run build → dist/):
+// один домен, без CORS. Усі не-файлові шляхи (/booking, /admin…) — index.html для роутера.
+// У розробці dist/ зазвичай немає — тоді сайт віддає Vite.
+const DIST = fileURLToPath(new URL("../../dist", import.meta.url));
+if (existsSync(DIST)) {
+  app.use(express.static(DIST));
+  app.get("*", (req, res) => res.sendFile(join(DIST, "index.html")));
+}
 
 // Централізований обробник помилок (сюди потрапляють помилки з asyncHandler).
 app.use((err, req, res, next) => {
