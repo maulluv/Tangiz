@@ -198,7 +198,10 @@ function buildBot() {
   // Пацієнт може перемкнути мову бота: /lang → кнопки.
   b.command("lang", async (ctx) => {
     const owner = await getOwner();
-    if (isOwnerChat(owner, ctx.chat.id)) return; // лікарю мову не міняємо
+    // Лікарю мову не міняємо, але й не мовчимо — інакше здається, що бот завис.
+    if (isOwnerChat(owner, ctx.chat.id)) {
+      return ctx.reply("Повідомлення для лікаря завжди українською. /lang — для пацієнтів: вони так обирають мову бота.");
+    }
     const kb = new InlineKeyboard().text("🇺🇦 Українська", "lang:uk").text("🇬🇧 English", "lang:en");
     await ctx.reply(tt(await chatLang(ctx.chat.id), "langChoose"), { reply_markup: kb });
   });
