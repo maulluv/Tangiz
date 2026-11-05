@@ -79,6 +79,8 @@ model Booking {
   // Коли клієнту надіслано нагадування (щоб не надіслати те саме двічі). null — ще не слали.
   remindedDayAt  DateTime? // за добу до візиту
   reminderSentAt DateTime? // за годину до візиту
+  // Коли пацієнту надіслано питання від лікаря «як ви після прийому?» (через FOLLOWUP_DAYS днів).
+  followUpSentAt DateTime?
   createdAt      DateTime  @default(now())
 
   @@index([status, date])
@@ -93,6 +95,7 @@ model Review {
   textUk    String
   textEn    String
   published Boolean  @default(true) // згодом можна вмикати модерацію
+  source    String   @default("site") // site | telegram — де залишено відгук
   createdAt DateTime @default(now())
 }
 

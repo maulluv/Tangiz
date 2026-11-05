@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button, Card, Modal } from "@/components/ui";
 import { PhoneIcon, TelegramIcon, StarIcon, ClockIcon } from "@/components/icons";
 import DoctorPhoto from "@/components/DoctorPhoto";
+import SocialLinks from "@/components/SocialLinks";
 import { services } from "@/data";
 import { useClinic } from "@/features/clinic";
 import { getAvailability } from "@/features/booking";
@@ -19,6 +20,18 @@ const bookUrl = (slot) =>
 
 const WHEN = ["when1", "when2", "when3", "when4", "when5", "when6", "when7", "when8"];
 const GET = ["get1", "get2", "get3", "get4"];
+const HIGHLIGHTS = [
+  ["hl1", "🦴"],
+  ["hl2", "🔬"],
+  ["hl3", "🏃"],
+  ["hl4", "🤝"],
+];
+const FACTS = [
+  ["about.fact1", "🇬🇪"],
+  ["about.fact2", "🇺🇦"],
+  ["about.fact3", "🍵"],
+  ["about.fact4", "🌍"],
+];
 
 export default function Landing() {
   const { t, lang } = useI18n();
@@ -211,6 +224,73 @@ export default function Landing() {
                 </a>
               </div>
             )}
+          </Card>
+        </section>
+
+        {/* ── Про лікаря: коротко — хто прийме і чим він може допомогти ── */}
+        <section className="pt-14 sm:pt-20">
+          <Card className="relative overflow-hidden p-5 sm:p-8">
+            <div
+              className="absolute -right-16 -top-16 size-56 rounded-full bg-brand-500/10 blur-3xl"
+              aria-hidden="true"
+            />
+            <div className="relative grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-10">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-brand-600">{t("landing.aboutLabel")}</span>
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {t("landing.aboutTitle")} <span className="accent">{t("landing.aboutAccent")}</span>
+                </h2>
+
+                <div className="mt-5 flex items-center gap-3">
+                  <div className="relative size-14 shrink-0 overflow-hidden rounded-full border border-border bg-surface shadow-[var(--shadow-soft)]">
+                    <DoctorPhoto />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold">{doctorName}</div>
+                    <div className="text-sm text-muted">{t("clinic.specialty")}</div>
+                  </div>
+                </div>
+
+                <p className="mt-5 text-sm leading-relaxed text-ink/80 sm:text-[15px]">{t("clinic.bio")}</p>
+
+                <ul className="mt-5 flex flex-wrap gap-2">
+                  {FACTS.map(([key, icon]) => (
+                    <li
+                      key={key}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg px-3 py-1 text-xs text-muted sm:text-sm"
+                    >
+                      <span aria-hidden="true">{icon}</span>
+                      {t(key)}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 lg:mt-auto lg:pt-6">
+                  <Link to="/about" className="text-sm font-medium text-brand-600 hover:text-brand-700">
+                    {t("landing.aboutMore")}
+                  </Link>
+                  <SocialLinks className="-mr-2" />
+                </div>
+              </div>
+
+              {/* 2×2 і на телефоні — щоб блок лишався коротким */}
+              <ul className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                {HIGHLIGHTS.map(([key, icon]) => (
+                  <li key={key} className="flex flex-col gap-2.5 rounded-2xl border border-border bg-bg p-3.5 sm:gap-3 sm:p-5">
+                    <span
+                      className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-base sm:size-10 sm:text-lg"
+                      aria-hidden="true"
+                    >
+                      {icon}
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold leading-snug sm:text-base">{t(`landing.${key}t`)}</h3>
+                      <p className="mt-1 text-xs leading-relaxed text-muted sm:text-sm">{t(`landing.${key}d`)}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </Card>
         </section>
 

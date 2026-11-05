@@ -10,7 +10,7 @@ import {
   requestClientConfirmation,
   botLink,
 } from "../bot.js";
-import { cancelBooking } from "../slotsLib.js";
+import { cancelBooking, bookSlot } from "../slotsLib.js";
 import { CONFIRM_MIN, holdDeadline } from "../holds.js";
 
 const router = Router();
@@ -79,32 +79,17 @@ router.post(
     // Без бота (немає токена в .env) підтвердити нікуди — тоді запис іде лікарю одразу.
     const needsClientConfirm = botEnabled;
 
-    let booking;
-    try {
-      booking = await prisma.booking.create({
-        data: {
-          userId: user.id,
-          serviceId: service.id,
-          slotId: slot.id,
-          clientName: cleanName,
-          date: when,
-          durationMin: service.durationMin,
-          price: service.price,
-          status: needsClientConfirm ? "pending_client" : "pending",
-          holdUntil: needsClientConfirm ? holdDeadline() : null,
-          source: "site",
-        },
-      });
-    } catch (e) {
-      // P2002 по slotId — цей слот уже за кимось (напр. двоє натиснули одночасно).
-      // Краще зрозуміла відповідь, ніж 500.
-      if (e.code === "P2002") {
-        return res.status(409).json({ error: "Цей час уже зайняли. Оберіть, будь ласка, інший." });
-      }
-      throw e;
+    // bookSlot атомарно займає слот (двоє, що натиснули одночасно, не отримають той самий час).
+    const booking = await bookSlot(slot.id, {
+      userId: user.id,
+      clientName: cleanName,
+      status: needsClientConfirm ? "pending_client" : "pending",
+      holdUntil: needsClientConfirm ? holdDeadline() : null,
+      source: "site",
+    });
+    if (!booking) {
+      return res.status(409).json({ error: "Цей час уже зайняли. Оберіть, будь ласка, інший." });
     }
-
-    await prisma.slot.update({ where: { id: slot.id }, data: { booked: true } });
 
     const accountExists = !!existing?.passwordHash;
 
@@ -186,7 +171,7 @@ router.post(
     // Лікар має побачити, що час звільнився (раніше слот тихо ставав вільним).
     // Повторне скасування вже скасованого — мовчки, щоб не смикати лікаря двічі.
     if (ownerKnew) {
-      notifyOwnerClientCanceled(booking.id).catch((e) =>
+      notifyOwnerClientCanceled(booking.id, "site").catch((e) =>
         console.error("Не вдалося сповістити лікаря про скасування:", e.message),
       );
     }
