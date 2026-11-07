@@ -192,7 +192,8 @@ function buildBot() {
       );
     }
 
-    return ctx.reply(tt(await chatLang(ctx.chat.id), "startPatient"));
+    // remove_keyboard прибирає «приклеєну» клавіатуру попереднього бота з цим токеном.
+    return ctx.reply(tt(await chatLang(ctx.chat.id), "startPatient"), { reply_markup: { remove_keyboard: true } });
   });
 
   // Пацієнт може перемкнути мову бота: /lang → кнопки.
@@ -387,6 +388,12 @@ function buildBot() {
     }
   });
 
+  // Будь-яка інша кнопка — зі старих повідомлень (напр. попереднього бота з цим токеном)
+  // чи з нашої старішої версії. Відповідаємо, щоб у людини не крутився вічний «годинник».
+  b.on("callback_query:data", (ctx) =>
+    ctx.answerCallbackQuery({ text: "Ця кнопка вже не діє. Надішліть /start.", show_alert: true }),
+  );
+
   // Текстові повідомлення.
   b.on("message", async (ctx) => {
     const owner = await getOwner();
@@ -444,7 +451,7 @@ function buildBot() {
 
     // Пацієнт: відповідь + пересилання власнику.
     const lang = await chatLang(ctx.chat.id);
-    await ctx.reply(tt(lang, "msgAck"));
+    await ctx.reply(tt(lang, "msgAck"), { reply_markup: { remove_keyboard: true } });
     if (owner?.telegramChatId) {
       const f = ctx.from;
       const name = f ? `${f.first_name ?? ""} ${f.last_name ?? ""}`.trim() : "";
