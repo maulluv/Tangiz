@@ -14,6 +14,7 @@ const filters = [
   { key: "pending", tKey: "appt.pending" },
   { key: "confirmed", tKey: "appt.confirmed" },
   { key: "completed", tKey: "appt.completed" },
+  { key: "no_show", tKey: "appt.noShow" },
   { key: "canceled", tKey: "appt.canceled" },
 ];
 
@@ -21,12 +22,14 @@ const filters = [
 const transitions = {
   // Пацієнт ще не підтвердив запис у боті — лікар може хіба що скасувати.
   pending_client: ["cancel"],
-  pending: ["confirm", "complete", "cancel"],
-  confirmed: ["complete", "cancel"],
-  completed: [],
+  pending: ["confirm", "complete", "noShow", "cancel"],
+  confirmed: ["complete", "noShow", "cancel"],
+  // «Відбувся» ↔ «Не прийшов» можна поміняти — щоб виправити помилкове натискання.
+  completed: ["noShow"],
+  no_show: ["complete"],
   canceled: [],
 };
-const statusOf = { confirm: "confirmed", complete: "completed", cancel: "canceled" };
+const statusOf = { confirm: "confirmed", complete: "completed", cancel: "canceled", noShow: "no_show" };
 
 export default function Appointments() {
   const { t } = useI18n();
@@ -211,7 +214,9 @@ function DetailModal({ appt, onClose, onStatus }) {
     close();
   }
 
-  const actions = appt ? transitions[appt.status] : [];
+  // «Не прийшов» має сенс лише після часу прийому (так само перевіряє сервер).
+  const past = appt && +new Date(appt.date) < Date.now();
+  const actions = appt ? transitions[appt.status].filter((a) => a !== "noShow" || past) : [];
 
   return (
     <Modal open={open} onClose={close} title={t("apptDetail.title")} className="max-w-md">
@@ -278,6 +283,11 @@ function DetailModal({ appt, onClose, onStatus }) {
                 {actions.includes("complete") && (
                   <Button variant="outline" onClick={() => apply("complete")}>
                     {t("apptAction.complete")}
+                  </Button>
+                )}
+                {actions.includes("noShow") && (
+                  <Button variant="outline" onClick={() => apply("noShow")}>
+                    {t("apptAction.noShow")}
                   </Button>
                 )}
                 {actions.includes("cancel") && (

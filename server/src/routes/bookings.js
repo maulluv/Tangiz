@@ -157,9 +157,10 @@ router.post(
       return res.status(404).json({ error: "Запис не знайдено." });
     }
 
-    // Завершений прийом скасувати не можна; повторне скасування — просто повертаємо як є.
-    if (booking.status === "completed") {
-      return res.status(409).json({ error: "Прийом уже відбувся — скасувати його не можна." });
+    // Минулий чи завершений прийом скасувати не можна; повторне скасування — просто повертаємо як є.
+    if (booking.status === "completed" || booking.status === "no_show" || booking.date < new Date()) {
+      if (booking.status === "canceled") return res.json(booking);
+      return res.status(409).json({ error: "Час прийому вже минув — скасувати його не можна." });
     }
     if (booking.status === "canceled") return res.json(booking);
 

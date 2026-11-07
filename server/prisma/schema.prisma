@@ -70,7 +70,7 @@ model Booking {
   date           DateTime
   durationMin    Int
   price          Int
-  status         String    @default("pending") // pending_client | pending | confirmed | completed | canceled
+  status         String    @default("pending") // pending_client | pending | confirmed | completed | no_show | canceled
   // Запис із сайту спершу чекає, поки пацієнт підтвердить його в Telegram-боті (pending_client);
   // весь цей час слот тримається за ним. Минув holdUntil без підтвердження —
   // прибиральник (src/holds.js) скасовує запис і повертає слот у вільні.

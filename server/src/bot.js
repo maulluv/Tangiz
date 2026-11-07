@@ -225,7 +225,7 @@ async function linkClientChat(ctx, bookingId) {
     return sendConfirmRequest(ctx.chat.id, booking);
   }
 
-  if (booking.status === "canceled") {
+  if (booking.status === "canceled" || booking.status === "no_show") {
     return ctx.reply(tt(lang, "remindersOnCanceled"), { reply_markup: mainMenu(lang) });
   }
 
@@ -639,9 +639,14 @@ function buildBot() {
     }
     // Пацієнт скасував запис сам (кабінет) або прийом уже завершено — слот міг зайняти
     // хтось інший, тож «воскрешати» запис кнопкою зі старого повідомлення не можна.
-    if (booking.status === "canceled" || booking.status === "completed") {
+    if (["canceled", "completed", "no_show"].includes(booking.status)) {
       return ctx.answerCallbackQuery({
-        text: booking.status === "canceled" ? "Запис уже скасовано." : "Прийом уже завершено.",
+        text:
+          booking.status === "canceled"
+            ? "Запис уже скасовано."
+            : booking.status === "no_show"
+              ? "Позначено як неявку."
+              : "Прийом уже завершено.",
         show_alert: true,
       });
     }

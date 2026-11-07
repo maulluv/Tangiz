@@ -10,15 +10,18 @@ import { notifyClientBookingStatus } from "../bot.js";
 const router = Router();
 router.use(requireAuth, requireOwner);
 
-const STATUSES = ["pending", "confirmed", "completed", "canceled"];
+const STATUSES = ["pending", "confirmed", "completed", "canceled", "no_show"];
 
-// Дозволені переходи статусу (ті самі, що й кнопки в адмінці). Скасований чи завершений
-// запис назад не повертаємо: слот скасованого вже міг зайняти інший пацієнт.
+// Дозволені переходи статусу (ті самі, що й кнопки в адмінці). Скасований запис назад
+// не повертаємо: його слот уже міг зайняти інший пацієнт.
+// no_show — «не прийшов»: минулий запис, на який пацієнт не з'явився. «Відбувся» і
+// «не прийшов» можна міняти місцями — щоб лікар виправив помилкове натискання.
 const TRANSITIONS = {
   pending_client: ["canceled"],
-  pending: ["confirmed", "completed", "canceled"],
-  confirmed: ["completed", "canceled"],
-  completed: [],
+  pending: ["confirmed", "completed", "canceled", "no_show"],
+  confirmed: ["completed", "canceled", "no_show"],
+  completed: ["no_show"],
+  no_show: ["completed"],
   canceled: [],
 };
 
@@ -66,6 +69,9 @@ router.patch(
     if (!booking) return res.status(404).json({ error: "Запис не знайдено." });
     if (status !== booking.status && !TRANSITIONS[booking.status]?.includes(status)) {
       return res.status(409).json({ error: "Такий перехід статусу неможливий." });
+    }
+    if (status === "no_show" && booking.date > new Date()) {
+      return res.status(409).json({ error: "Неявку можна позначити лише після часу прийому." });
     }
 
     if (status === "canceled") {

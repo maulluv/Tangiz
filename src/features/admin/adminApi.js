@@ -43,6 +43,8 @@ export const needsMark = (a) =>
 // Активний майбутній запис (чекає лікаря або підтверджений).
 export const isUpcoming = (a) => (a.status === "pending" || a.status === "confirmed") && !isPast(a);
 
+export const isNoShow = (a) => a.status === "no_show";
+
 // Статистика клієнта рахується наживо з записів. Чиста функція.
 export function clientStats(clientId, appts = []) {
   const mine = appts.filter((a) => a.clientId === clientId);
@@ -50,6 +52,7 @@ export function clientStats(clientId, appts = []) {
   return {
     total: mine.length,
     visits: done.length,
+    noShows: mine.filter(isNoShow).length,
     spent: done.reduce((s, a) => s + a.price, 0),
   };
 }

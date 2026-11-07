@@ -14,6 +14,7 @@ export {
   clientStats,
   isPast,
   isDone,
+  isNoShow,
   needsMark,
   isUpcoming,
 } from "./adminApi";

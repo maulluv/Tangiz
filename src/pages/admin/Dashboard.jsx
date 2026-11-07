@@ -7,6 +7,7 @@ import {
   getClients,
   setAppointmentStatus,
   isDone,
+  isNoShow,
   needsMark,
   isUpcoming,
 } from "@/features/admin";
@@ -57,6 +58,7 @@ export default function Dashboard() {
   const done = useMemo(() => appointments.filter(isDone), [appointments]);
   const thisMonth = kyivMonth(new Date());
   const doneThisMonth = done.filter((a) => kyivMonth(a.date) === thisMonth);
+  const noShowsThisMonth = appointments.filter((a) => isNoShow(a) && kyivMonth(a.date) === thisMonth).length;
 
   // Графік: дохід із прийомів, що відбулися, за останні CHART_MONTHS місяців (поточний — останній).
   const chart = useMemo(() => {
@@ -118,6 +120,7 @@ export default function Dashboard() {
         <StatCard
           label={t("dash.visitsMonth")}
           value={String(doneThisMonth.length)}
+          hint={noShowsThisMonth ? t("dash.noShowsN", { n: noShowsThisMonth }) : undefined}
           icon={<ArrowUpIcon />}
         />
         <StatCard label={t("dash.next7")} value={String(weekAhead.length)} icon={<CalendarIcon />} />
@@ -247,10 +250,10 @@ export default function Dashboard() {
   );
 }
 
-// Рядок «прийом відбувся?». «Не відбувся» — з перепитуванням: скасований запис не повернути.
+// Рядок «прийом відбувся?». Обидві позначки можна згодом поміняти в картці запису,
+// тож без перепитувань.
 function MarkRow({ appt, onMark }) {
   const { t } = useI18n();
-  const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function run(status) {
@@ -271,30 +274,12 @@ function MarkRow({ appt, onMark }) {
         </div>
       </div>
       <div className="flex shrink-0 gap-2">
-        {asking ? (
-          <>
-            <Button variant="danger" disabled={busy} onClick={() => run("canceled")}>
-              {t("dash.markNoConfirm")}
-            </Button>
-            <Button variant="outline" disabled={busy} onClick={() => setAsking(false)}>
-              {t("dash.back")}
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button disabled={busy} onClick={() => run("completed")}>
-              {t("dash.markYes")}
-            </Button>
-            <Button
-              variant="ghost"
-              disabled={busy}
-              onClick={() => setAsking(true)}
-              className="text-danger hover:bg-red-50"
-            >
-              {t("dash.markNo")}
-            </Button>
-          </>
-        )}
+        <Button disabled={busy} onClick={() => run("completed")}>
+          {t("dash.markYes")}
+        </Button>
+        <Button variant="outline" disabled={busy} onClick={() => run("no_show")}>
+          {t("dash.markNo")}
+        </Button>
       </div>
     </li>
   );

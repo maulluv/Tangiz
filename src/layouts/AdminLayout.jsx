@@ -121,6 +121,8 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
+  // Телефон: поле пошуку ховається за лупою й розгортається на всю шапку.
+  const [searchOpen, setSearchOpen] = useState(false);
   const [badges, setBadges] = useState({});
   const title = t(pageTitleKeys[pathname] ?? "common.ownerCabinet");
 
@@ -149,6 +151,7 @@ export default function AdminLayout() {
     if (!q) return;
     navigate(`/admin/clients?q=${encodeURIComponent(q)}`);
     setQuery("");
+    setSearchOpen(false);
   }
 
   return (
@@ -180,7 +183,7 @@ export default function AdminLayout() {
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 sm:px-6">
+        <header className="relative flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <button
               onClick={() => setMenuOpen(true)}
@@ -207,8 +210,50 @@ export default function AdminLayout() {
                 className="h-9 w-48 rounded-lg border border-border bg-bg pl-8 pr-3 text-sm outline-none focus:border-brand-500 lg:w-64"
               />
             </form>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="grid size-9 place-items-center rounded-lg text-muted hover:bg-black/5 sm:hidden"
+              aria-label={t("admin.searchPh")}
+            >
+              <SearchIcon width={20} height={20} />
+            </button>
             <LanguageSwitch />
           </div>
+
+          {/* Пошук на телефоні — поверх шапки */}
+          {searchOpen && (
+            <form
+              onSubmit={submitSearch}
+              role="search"
+              className="absolute inset-0 z-10 flex items-center gap-2 bg-surface px-4 sm:hidden"
+            >
+              <SearchIcon width={18} height={18} className="shrink-0 text-muted" />
+              {/* type="text": у search браузер додає свій хрестик — поруч із нашим «закрити» їх було б два */}
+              <input
+                type="text"
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && setSearchOpen(false)}
+                placeholder={t("admin.searchPh")}
+                aria-label={t("admin.searchPh")}
+                enterKeyHint="search"
+                className="h-10 min-w-0 flex-1 bg-transparent text-base outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchOpen(false);
+                  setQuery("");
+                }}
+                className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-black/5"
+                aria-label={t("common.close")}
+              >
+                <CloseIcon width={20} height={20} />
+              </button>
+            </form>
+          )}
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">

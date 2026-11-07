@@ -206,6 +206,9 @@ function ClientCard({ client, appts, onClose, onEdit }) {
 
           <div className="text-sm text-muted">
             {t("clients.since")}: {dateLong(client.createdAt)}
+            {stats.noShows > 0 && (
+              <span className="text-orange-700"> · {t("clientCard.noShows", { n: stats.noShows })}</span>
+            )}
           </div>
 
           <div>
