@@ -75,7 +75,10 @@ router.patch(
     }
     // Пацієнту пишемо про підтвердження/скасування — так само, як із кнопок у боті
     // (сам notifyClientBookingStatus мовчить, якщо статус інший або бот вимкнено).
-    if (status !== booking.status) {
+    // Минулий запис, позначений «не відбувся», пацієнту не пишемо — «ваш запис скасовано»
+    // про вчорашній прийом лише збентежить.
+    const pastCancel = status === "canceled" && booking.date < new Date();
+    if (status !== booking.status && !pastCancel) {
       notifyClientBookingStatus(booking.id, status).catch((e) =>
         console.error("Не вдалося сповістити пацієнта:", e.message),
       );
@@ -198,6 +201,26 @@ router.patch(
 );
 
 // --- Відгуки (модерація) ----------------------------------------------
+
+// Усі відгуки для сторінки «Відгуки» в адмінці — з джерелом (сайт / Telegram) і датою.
+router.get(
+  "/reviews",
+  asyncHandler(async (req, res) => {
+    const list = await prisma.review.findMany({ orderBy: { createdAt: "desc" } });
+    res.json(
+      list.map((r) => ({
+        id: r.id,
+        name: r.name,
+        rating: r.rating,
+        serviceId: r.serviceId,
+        text: r.textUk,
+        source: r.source,
+        published: r.published,
+        createdAt: r.createdAt,
+      })),
+    );
+  }),
+);
 
 // Видалити відгук (чистка спаму).
 router.delete(

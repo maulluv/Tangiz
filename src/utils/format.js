@@ -50,3 +50,7 @@ export const slotShort = (iso) => {
   }).format(d);
   return `${day} · ${timeOnly(iso)}`;
 };
+
+// «2,1 тис.» / «2.1K» — коротко для підписів на графіках, де повна сума не влазить.
+export const compact = (n) =>
+  new Intl.NumberFormat(currentLocale, { notation: "compact", maximumFractionDigits: 1 }).format(n);

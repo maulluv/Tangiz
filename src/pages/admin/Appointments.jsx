@@ -33,6 +33,7 @@ export default function Appointments() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
 
@@ -46,12 +47,30 @@ export default function Appointments() {
     };
   }, []);
 
+  // Пошук за ім'ям або телефоном (телефон — за цифрами, формат не важливий).
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const qd = q.replace(/\D/g, "").replace(/^(380|0)/, "");
+    if (!q) return list;
+    return list.filter(
+      (a) =>
+        a.clientName.toLowerCase().includes(q) ||
+        (qd.length >= 3 && (a.phone || "").replace(/\D/g, "").includes(qd)),
+    );
+  }, [list, query]);
+
+  const counts = useMemo(() => {
+    const c = { all: matches.length };
+    for (const a of matches) c[a.status] = (c[a.status] || 0) + 1;
+    return c;
+  }, [matches]);
+
   const rows = useMemo(
     () =>
-      [...list]
+      [...matches]
         .filter((a) => filter === "all" || a.status === filter)
         .sort((a, b) => +new Date(b.date) - +new Date(a.date)),
-    [list, filter],
+    [matches, filter],
   );
 
   const detail = list.find((a) => a.id === detailId) || null;
@@ -80,13 +99,28 @@ export default function Appointments() {
               }`}
             >
               {t(f.tKey)}
+              <span
+                className={`ml-1.5 rounded-full px-1.5 text-xs ${filter === f.key ? "bg-white/20" : "bg-black/5"}`}
+              >
+                {counts[f.key] || 0}
+              </span>
             </button>
           ))}
         </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <PlusIcon width={18} height={18} />
-          {t("appt.new")}
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("appt.searchPh")}
+            aria-label={t("appt.searchPh")}
+            className="h-9 w-full rounded-lg border border-border bg-bg px-3 text-sm outline-none focus:border-brand-500 sm:w-56"
+          />
+          <Button onClick={() => setFormOpen(true)} className="shrink-0">
+            <PlusIcon width={18} height={18} />
+            {t("appt.new")}
+          </Button>
+        </div>
       </div>
 
       <Card className="overflow-hidden">
@@ -122,7 +156,10 @@ export default function Appointments() {
                     onClick={() => setDetailId(a.id)}
                     className="cursor-pointer border-b border-border last:border-0 hover:bg-black/[0.02]"
                   >
-                    <td className="px-3 py-3 font-medium sm:px-5">{a.clientName}</td>
+                    <td className="px-3 py-3 sm:px-5">
+                      <div className="font-medium">{a.clientName}</div>
+                      <div className="text-xs text-muted sm:hidden">{t(`service.${a.serviceId}`)}</div>
+                    </td>
                     <td className="hidden px-5 py-3 text-muted sm:table-cell">{t(`service.${a.serviceId}`)}</td>
                     <td className="whitespace-nowrap px-3 py-3 text-muted sm:px-5">{dateTime(a.date)}</td>
                     <td className="hidden px-5 py-3 text-muted lg:table-cell">{t(`source.${a.source}`)}</td>

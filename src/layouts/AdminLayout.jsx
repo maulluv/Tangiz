@@ -1,28 +1,37 @@
-import { useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarIcon,
   ChartIcon,
   ClockIcon,
   CloseIcon,
+  InboxIcon,
   ListIcon,
   MedicalIcon,
   MenuIcon,
+  ReviewIcon,
+  SearchIcon,
   SettingsIcon,
   UsersIcon,
 } from "@/components/icons";
 import LanguageSwitch from "@/components/LanguageSwitch";
 import { useClinic } from "@/features/clinic";
+import { getAppointments, APPTS_CHANGED } from "@/features/admin";
 import { useI18n } from "@/i18n";
 
+// badge: "pending" — біля пункту показуємо кількість записів, що чекають лікаря.
 const nav = [
   { to: "/admin", tKey: "nav.stats", icon: ChartIcon, end: true },
-  { to: "/admin/clients", tKey: "nav.clients", icon: UsersIcon, end: false },
+  { to: "/admin/pending", tKey: "nav.pending", icon: InboxIcon, end: false, badge: "pending" },
   { to: "/admin/appointments", tKey: "nav.appointments", icon: ListIcon, end: false },
-  { to: "/admin/pending", tKey: "nav.pending", icon: ClockIcon, end: false },
-  { to: "/admin/availability", tKey: "nav.availability", icon: CalendarIcon, end: false },
   { to: "/admin/calendar", tKey: "nav.calendar", icon: CalendarIcon, end: false },
+  { to: "/admin/availability", tKey: "nav.availability", icon: ClockIcon, end: false },
+  { to: "/admin/clients", tKey: "nav.clients", icon: UsersIcon, end: false },
+  { to: "/admin/reviews", tKey: "nav.reviews", icon: ReviewIcon, end: false },
 ];
+
+// Як часто оновлюємо лічильник «Очікують» (нові записи приходять і з сайту, і з бота).
+const BADGE_REFRESH_MS = 60_000;
 
 const pageTitleKeys = {
   "/admin": "nav.stats",
@@ -31,10 +40,11 @@ const pageTitleKeys = {
   "/admin/pending": "nav.pending",
   "/admin/availability": "nav.availability",
   "/admin/calendar": "nav.calendar",
+  "/admin/reviews": "nav.reviews",
   "/admin/settings": "nav.settings",
 };
 
-function SidebarContent({ onNavigate }) {
+function SidebarContent({ onNavigate, badges = {} }) {
   const { t } = useI18n();
   const CLINIC = useClinic();
   return (
@@ -55,7 +65,7 @@ function SidebarContent({ onNavigate }) {
       </Link>
 
       <nav className="flex-1 space-y-1 px-3 py-2">
-        {nav.map(({ to, tKey, icon: Icon, end }) => (
+        {nav.map(({ to, tKey, icon: Icon, end, badge }) => (
           <NavLink
             key={to}
             to={to}
@@ -70,7 +80,12 @@ function SidebarContent({ onNavigate }) {
             }
           >
             <Icon width={18} height={18} />
-            {t(tKey)}
+            <span className="flex-1">{t(tKey)}</span>
+            {badge && badges[badge] > 0 && (
+              <span className="min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-xs font-semibold leading-5 text-white">
+                {badges[badge]}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -103,14 +118,44 @@ function SidebarContent({ onNavigate }) {
 export default function AdminLayout() {
   const { pathname } = useLocation();
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [badges, setBadges] = useState({});
   const title = t(pageTitleKeys[pathname] ?? "common.ownerCabinet");
+
+  // Лічильник «Очікують»: при переході, одразу після зміни статусу
+  // і раз на хвилину — нові записи приходять у будь-який момент.
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      getAppointments()
+        .then((list) => alive && setBadges({ pending: list.filter((a) => a.status === "pending").length }))
+        .catch(() => {});
+    load();
+    const id = setInterval(load, BADGE_REFRESH_MS);
+    window.addEventListener(APPTS_CHANGED, load); // лікар щойно змінив статус запису
+    return () => {
+      alive = false;
+      clearInterval(id);
+      window.removeEventListener(APPTS_CHANGED, load);
+    };
+  }, [pathname]);
+
+  // Пошук у шапці веде в «Клієнти» з уже введеним запитом (там і контакти, і історія записів).
+  function submitSearch(e) {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    navigate(`/admin/clients?q=${encodeURIComponent(q)}`);
+    setQuery("");
+  }
 
   return (
     <div className="flex h-screen bg-bg">
       {/* Sidebar — статична на десктопі (lg+) */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface lg:flex">
-        <SidebarContent />
+        <SidebarContent badges={badges} />
       </aside>
 
       {/* Мобільне меню (drawer) */}
@@ -128,7 +173,7 @@ export default function AdminLayout() {
             >
               <CloseIcon width={20} height={20} />
             </button>
-            <SidebarContent onNavigate={() => setMenuOpen(false)} />
+            <SidebarContent badges={badges} onNavigate={() => setMenuOpen(false)} />
           </aside>
         </div>
       )}
@@ -147,11 +192,21 @@ export default function AdminLayout() {
             <h1 className="truncate text-base font-semibold sm:text-lg">{title}</h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <input
-              type="search"
-              placeholder={t("common.search")}
-              className="hidden h-9 w-40 rounded-lg border border-border bg-bg px-3 text-sm outline-none focus:border-brand-500 sm:block lg:w-56"
-            />
+            <form onSubmit={submitSearch} role="search" className="relative hidden sm:block">
+              <SearchIcon
+                width={16}
+                height={16}
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("admin.searchPh")}
+                aria-label={t("admin.searchPh")}
+                className="h-9 w-48 rounded-lg border border-border bg-bg pl-8 pr-3 text-sm outline-none focus:border-brand-500 lg:w-64"
+              />
+            </form>
             <LanguageSwitch />
           </div>
         </header>
