@@ -1,9 +1,9 @@
 {
-  "name": "tangiz-server",
+  "name": "tengiz-server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "Бекенд TANGIZ — API для сайту та (згодом) Telegram-бота.",
+  "description": "Бекенд TENGIZ — API для сайту та (згодом) Telegram-бота.",
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "node --watch --env-file=.env src/index.js",

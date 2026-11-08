@@ -28,7 +28,7 @@ export const SERVICE_SHORT = { s1: "Консульт.", s2: "Мануальна"
 const TEXT = {
   uk: {
     startPatient:
-      "Вітаю! Це бот клініки TANGIZ 👋\n\n" +
+      "Вітаю! Це бот клініки TENGIZ 👋\n\n" +
       "Тут можна:\n" +
       "🗓 записатися на прийом — бот покаже вільні години;\n" +
       "📋 переглянути або скасувати свої записи;\n" +
@@ -155,7 +155,7 @@ const TEXT = {
   },
   en: {
     startPatient:
-      "Hello! This is the TANGIZ clinic bot 👋\n\n" +
+      "Hello! This is the TENGIZ clinic bot 👋\n\n" +
       "Here you can:\n" +
       "🗓 book an appointment — the bot shows free hours;\n" +
       "📋 view or cancel your appointments;\n" +

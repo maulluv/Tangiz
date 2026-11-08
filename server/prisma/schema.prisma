@@ -1,4 +1,4 @@
-// Схема бази даних TANGIZ.
+// Схема бази даних TENGIZ.
 // Тут описано ВСІ сутності системи — Prisma із цього створює таблиці й типобезпечні
 // запити. Одна БД спільна для сайту й (згодом) Telegram-бота.
 //
@@ -81,7 +81,12 @@ model Booking {
   reminderSentAt DateTime? // за годину до візиту
   // Коли пацієнту надіслано питання від лікаря «як ви після прийому?» (через FOLLOWUP_DAYS днів).
   followUpSentAt DateTime?
+  // Google Calendar лікаря (src/gcal.js): id події в календарі та коли її востаннє
+  // звірено із записом. updatedAt > gcalSyncedAt — подію треба оновити.
+  gcalEventId    String?
+  gcalSyncedAt   DateTime?
   createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
 
   @@index([status, date])
 }

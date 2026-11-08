@@ -1,4 +1,4 @@
-# Як викласти TANGIZ в інтернет
+# Як викласти TENGIZ в інтернет
 
 Сайт, API і Telegram-бот працюють **одним процесом** на одному сервері: сервер віддає зібраний сайт,
 відповідає на `/api`, тримає бота й таймери (автоскасування, нагадування), а база — це файл SQLite.
@@ -14,10 +14,10 @@
 
 ## 1. Домен
 
-1. Купіть домен, напр. `tangiz.com.ua` (або `.com`). Українські реєстратори: **nic.ua**, **imena.ua**,
+1. Купіть домен, напр. `tengiz.com.ua` (або `.com`). Українські реєстратори: **nic.ua**, **imena.ua**,
    **hostiq.ua**. `.com.ua` реєструється вільно; `.ua` без «com» вимагає торговельну марку.
 2. **DNS — через Cloudflare (безкоштовно).** Railway дає запис типу CNAME, а для «голого» домену
-   (`tangiz.com.ua` без `www`) DNS більшості реєстраторів його не підтримує. Cloudflare — підтримує.
+   (`tengiz.com.ua` без `www`) DNS більшості реєстраторів його не підтримує. Cloudflare — підтримує.
    - Зареєструйтеся на cloudflare.com → **Add a domain** → тариф **Free**.
    - Cloudflare покаже два NS-сервери — впишіть їх у кабінеті реєстратора замість його власних
      (розділ «DNS-сервери» / «NS»). Оновлення займає від кількох хвилин до доби.
@@ -76,19 +76,22 @@
    | `TELEGRAM_BOT_TOKEN` | токен `@Drdadvanibot` з кроку 2 |
    | `OWNER_USERNAME` | логін в адмінку, напр. `admin` |
    | `OWNER_PASSWORD` | пароль в адмінку (мін. 8 символів, **не** `admin`) |
-   | `VITE_SITE_URL` | `https://tangiz.com.ua` (ваш домен, без `/` у кінці) |
+   | `VITE_SITE_URL` | `https://tengiz.com.ua` (ваш домен, без `/` у кінці) |
    | `CLINIC_TZ` | `Europe/Kyiv` |
    | `BOOKING_CONFIRM_MIN` | `30` (хвилин на підтвердження запису в боті) |
    | `FOLLOWUP_DAYS` | `7` (через скільки днів після прийому лікар питає «як ви?», необов'язково) |
+   | `GOOGLE_SERVICE_ACCOUNT` | JSON-ключ сервісного акаунта Google (весь вміст файлу) — для Google Calendar, див. `server/README.md` |
+   | `GOOGLE_CALENDAR_ID` | gmail лікаря (id його календаря) |
 
    `PORT` не задавайте — Railway ставить сам.
    `OWNER_USERNAME`/`OWNER_PASSWORD` використовуються лише при першому запуску, коли база порожня.
 6. Натисніть **Deploy**. У **Deployments → View logs** мають з'явитися рядки
-   `🚀 TANGIZ API …` і `🤖 Telegram-бот @Drdadvanibot запущено.`
+   `🚀 TENGIZ API …` і `🤖 Telegram-бот @Drdadvanibot запущено.`
+   З Google Calendar ще й `📅 Google Calendar: записи синхронізуються в …`.
 
 ## 4. Підключити домен
 
-1. Railway: **Settings → Networking → Custom Domain** → `tangiz.com.ua`. Railway покаже CNAME-запис.
+1. Railway: **Settings → Networking → Custom Domain** → `tengiz.com.ua`. Railway покаже CNAME-запис.
 2. Cloudflare → **DNS → Add record**: тип `CNAME`, ім'я `@`, значення — з Railway,
    **Proxy status: DNS only** (сіра хмаринка). Те саме для `www`, якщо треба.
 3. Зачекайте, поки Railway покаже галочку біля домену (HTTPS-сертифікат робиться сам).

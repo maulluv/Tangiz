@@ -1,7 +1,7 @@
 // Статичні дані клініки. Текст, що перекладається (спеціалізація, біо тощо),
 // живе в src/i18n/translations.js.
 export const CLINIC = {
-  name: "TANGIZ",
+  name: "TENGIZ",
   doctorName: "Тенгіз Дадвані",
   initials: "ТД",
   phone: "+380 67 123 45 67",

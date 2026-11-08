@@ -121,7 +121,7 @@ async function main() {
   await prisma.clinicProfile.create({
     data: {
       id: 1,
-      name: "TANGIZ",
+      name: "TENGIZ",
       doctorName: "Тенгіз Дадвані",
       phone: "+380 67 123 45 67",
       telegram: "@Drdadvanibot",

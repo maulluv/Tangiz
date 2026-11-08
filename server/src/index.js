@@ -1,4 +1,4 @@
-// Точка входу API-сервера TANGIZ.
+// Точка входу API-сервера TENGIZ.
 // time.js — ПЕРШИМ імпортом: він виставляє часовий пояс клініки (CLINIC_TZ) для всього
 // процесу, і зробити це треба до того, як інші модулі почнуть працювати з датами.
 import { CLINIC_TZ } from "./time.js";
@@ -9,6 +9,7 @@ import express from "express";
 import cors from "cors";
 import { startBot } from "./bot.js";
 import { startHoldSweeper } from "./holds.js";
+import { startCalendarSync } from "./gcal.js";
 
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
@@ -65,7 +66,8 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`🚀 TANGIZ API на http://localhost:${PORT} (час клініки: ${CLINIC_TZ})`);
+  console.log(`🚀 TENGIZ API на http://localhost:${PORT} (час клініки: ${CLINIC_TZ})`);
   startBot(); // без TELEGRAM_BOT_TOKEN — тихо вимкнено
   startHoldSweeper(); // знімає записи, які пацієнт не підтвердив у боті вчасно
+  startCalendarSync(); // записи → Google Calendar лікаря (без GOOGLE_* — вимкнено)
 });
