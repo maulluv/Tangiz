@@ -3,8 +3,8 @@
 Сайт, API, Telegram-бот і таймери (автоскасування, нагадування) працюють **одним процесом**,
 а база — це один файл SQLite. Тому потрібен хостинг із процесом, що працює постійно, і з диском,
 який не стирається при оновленні. Це **Railway** (тариф Hobby, ~$5/міс).
-**Cloudflare** (де куплено домен) лише направляє домен на Railway. Сам сайт там не розміщується,
-бо Workers не тримають постійний процес і файл бази.
+**Porkbun** (де куплено домен) лише направляє домен на Railway. Cloudflare тут не потрібен,
+а Cloudflare Workers не тримають постійний процес і файл бази.
 
 Railway, Cloudflare, Google і Telegram-бот належать **власнику** (лікарю). Код лишається
 в GitHub розробника, а на Railway викладається командою `railway up` з Mac розробника
@@ -128,17 +128,21 @@ GOOGLE_CALENDAR_ID=gmail_лікаря@gmail.com
 
 Якщо деплой червоний — скопіюйте останні рядки логів розробнику.
 
-## 8. Домен (Cloudflare)
+## 8. Домен (Porkbun)
 
 1. **Railway:** сервіс → **Settings → Networking → Custom Domain** → `ДОМЕН`.
    Якщо питає порт — залиште запропонований. Railway покаже записи: `CNAME` і часто ще `TXT`.
-2. **Cloudflare** (акаунт власника) → домен → **DNS → Records**:
-   - видаліть наявні записи `A`/`AAAA`/`CNAME` з іменем `@` (якщо є, напр. «паркування»);
-   - **Add record:** тип `CNAME`, Name `@`, Target — з Railway, **Proxy status: DNS only**
-     (сіра хмаринка) → Save;
-   - якщо Railway дав `TXT` — додайте його так само, Name і Content як є.
-3. **www** (за бажанням): у Railway ще один Custom Domain `www.ДОМЕН` і так само його `CNAME`
-   у Cloudflare (DNS only).
+2. Домен куплено на **Porkbun**, DNS теж там (Cloudflare не потрібен).
+   porkbun.com → **Account → Domain Management** → біля домену **DNS**:
+   - видаліть записи-«паркування» Porkbun: `ALIAS` з порожнім Host і `CNAME` з Host `*`
+     (обидва ведуть на `pixie.porkbun.com`);
+   - додайте: Type **ALIAS**, Host порожній, Answer — значення CNAME з Railway → Add.
+     (Porkbun не дозволяє CNAME на «голий» домен, ALIAS робить те саме);
+   - якщо Railway дав `TXT` — Type `TXT`, Host і Answer як у Railway.
+   > Якщо в **Authoritative Nameservers** домену стоять сервери Cloudflare, а не Porkbun —
+   > записи додаються в Cloudflare (`CNAME @`, сіра хмаринка «DNS only»).
+3. **www** (за бажанням): у Railway ще один Custom Domain `www.ДОМЕН` і в Porkbun запис
+   `CNAME`, Host `www`, Answer — з Railway.
 4. Зачекайте, поки в Railway біля домену з'явиться зелена галочка (зазвичай 5–30 хв).
    HTTPS-сертифікат робиться сам. Хмаринку на «Proxied» не вмикайте.
 
