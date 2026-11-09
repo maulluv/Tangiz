@@ -1,189 +1,122 @@
-# Як викласти TENGIZ в інтернет
+# Як влаштовано робочий сайт TENGIZ
 
 Сайт, API, Telegram-бот і таймери (автоскасування, нагадування) працюють **одним процесом**,
-а база — це один файл SQLite. Тому потрібен хостинг із процесом, що працює постійно, і з диском,
-який не стирається при оновленні. Це **Railway** (тариф Hobby, ~$5/міс).
-**Porkbun** (де куплено домен) лише направляє домен на Railway. Cloudflare тут не потрібен,
-а Cloudflare Workers не тримають постійний процес і файл бази.
+а база — це один файл SQLite на диску. Тому хостинг — **Railway** (тариф Hobby, ~$5/міс):
+процес працює постійно, диск не стирається при оновленні.
 
-Railway, домен (Porkbun), Google і Telegram-бот належать **власнику** (лікарю). Код лишається
-в GitHub розробника, а на Railway викладається командою `railway up` з Mac розробника
-(як `wrangler deploy` у Syndicate).
-
-Нижче `ДОМЕН` — ваш домен без `https://` і без `/`, напр. `tengiz.com`.
-
----
-
-## 0. Що підготувати
-
-- [ ] Доступ до пошти власника (Gmail) — туди приходять підтвердження.
-- [ ] Акаунти власника на **Railway** (з карткою для Hobby) і **Porkbun** (з доменом).
-- [ ] Telegram власника — той, що є власником бота `@Drdadvanibot` у @BotFather.
-- [ ] Mac розробника з проєктом (для генерації секретів і налаштування бота).
-
----
-
-## 1–2. Railway: проєкт і сервіс
-
-У браузері, залогінившись в акаунт власника на railway.com:
-
-1. Аватарка внизу ліворуч → **Account Settings → Plans → Hobby**, додати картку.
-   Без Hobby сервер з часом зупиняється.
-2. **New Project → Empty Project** (не «Deploy from GitHub» — GitHub не підключаємо).
-3. На полотні: **+ Create → Empty Service**. Клацнути на нього → **Settings** → назва `tengiz`.
-
-## 3. Диск для бази
-
-1. На полотні проєкту: **+ Create** (або правою кнопкою на порожньому місці) → **Volume**.
-2. Обрати сервіс `tengiz`, **Mount path:** `/data`.
-
-Тут житиме файл `/data/tangiz.db`. Він не стирається при оновленнях.
-
-## 4. Секрети
-
-### 4.1 JWT_SECRET
-На Mac розробника:
-```bash
-openssl rand -base64 48
-```
-Скопіювати рядок, що вийшов. Він потрібен лише Railway, нікуди більше його не відправляйте.
-
-### 4.2 Логін і пароль адмінки
-Придумайте `OWNER_USERNAME` (напр. `admin`) і `OWNER_PASSWORD` (від 8 символів, не `admin`).
-Цим паролем лікар входить у `/admin` і прив'язує бота командою `/bind`.
-
-### 4.3 Токен Telegram-бота
-**З Telegram власника:** [@BotFather](https://t.me/BotFather) → `/mybots` → `@Drdadvanibot` →
-**API Token** → скопіювати.
-⚠️ Один токен працює лише в одному місці. Не запускайте локальний сервер із цим токеном.
-
-## 5. Google Calendar (записи в календар лікаря)
-
-Можна зробити пізніше: без цих змінних сайт працює, просто без календаря.
-
-1. **Власник:** console.cloud.google.com → угорі вибір проєкту → **New Project** → назва `TENGIZ` → Create.
-2. Пошук угорі: **Google Calendar API** → **Enable**.
-3. Меню → **IAM & Admin → Service Accounts → Create service account** → назва `tengiz-calendar` →
-   **Done** (ролі не потрібні).
-4. Відкрити створений акаунт → вкладка **Keys → Add key → Create new key → JSON** →
-   файл завантажиться. Скопіюйте email сервісного акаунта (вигляду `tengiz-calendar@….iam.gserviceaccount.com`).
-5. **Власник:** calendar.google.com → ⚙️ **Налаштування** → зліва свій календар →
-   **Доступ для окремих користувачів → Додати** → вставити email сервісного акаунта →
-   право **«Вносити зміни в події»** → Надіслати.
-6. На Mac перетворити ключ на один рядок (шлях — до завантаженого файлу):
-   ```bash
-   base64 -i ~/Downloads/НАЗВА_ФАЙЛУ.json | tr -d '\n' | pbcopy
-   ```
-   Рядок уже скопійовано, це значення для `GOOGLE_SERVICE_ACCOUNT`. Сам JSON-файл потім видаліть.
-
-## 6. Змінні в Railway
-
-Сервіс `tengiz` → **Variables → Raw Editor** → вставити, підставивши свої значення → **Update Variables**:
-
-```
-DATABASE_URL=file:/data/tangiz.db
-JWT_SECRET=рядок_з_4.1
-TELEGRAM_BOT_TOKEN=токен_з_4.3
-OWNER_USERNAME=admin
-OWNER_PASSWORD=пароль_з_4.2
-VITE_SITE_URL=https://ДОМЕН
-CLINIC_TZ=Europe/Kyiv
-BOOKING_CONFIRM_MIN=30
-FOLLOWUP_DAYS=7
-GOOGLE_SERVICE_ACCOUNT=рядок_з_5.6
-GOOGLE_CALENDAR_ID=gmail_лікаря@gmail.com
-```
-
-- `PORT` не задавайте — Railway ставить сам.
-- `OWNER_USERNAME`/`OWNER_PASSWORD` спрацьовують лише при першому запуску, коли база порожня.
-  Далі пароль змінюється вже в самій адмінці.
-- `VITE_SITE_URL` вшивається в сайт під час збірки (прев'ю посилань у месенджерах).
-  Якщо зміните домен, перезберіть сайт (**Deployments → ⋮ → Redeploy**).
-
-## 7. Запуск і перевірка
-
-1. Якщо Railway показує кнопку **Deploy** (зміни «staged») — натисніть.
-2. На Mac розробника, один раз:
-   ```bash
-   brew install railway
-   railway login
-   ```
-   `railway login` відкриє браузер — підтвердьте вхід, будучи залогіненим як власник.
-3. У папці проєкту (на гілці `main`, без незакомічених змін — заливається саме те, що лежить у папці):
-   ```bash
-   railway link
-   ```
-   Обрати проєкт власника і сервіс `tengiz` (питає один раз). Далі деплой:
-   ```bash
-   railway up
-   ```
-   Команда завантажує код (без файлів із `.gitignore`, тож `server/.env` і локальна база не потрапляють),
-   а Railway збирає й запускає його за `railway.json`.
-4. **Deployments** → останній → **View logs**. Мають з'явитися рядки:
-   - `🚀 TENGIZ API на …`
-   - `🤖 Telegram-бот @Drdadvanibot запущено.`
-   - `📅 Google Calendar: …` (якщо налаштовано крок 5)
-5. Тимчасова адреса для перевірки: **Settings → Networking → Generate Domain** → відкрийте
-   `….up.railway.app` — має відкритися сайт, а `/api/health` має відповісти `{"ok":true,…}`.
-
-Якщо деплой червоний — скопіюйте останні рядки логів розробнику.
-
-## 8. Домен (Porkbun)
-
-1. **Railway:** сервіс → **Settings → Networking → Custom Domain** → `ДОМЕН`.
-   Якщо питає порт — залиште запропонований. Railway покаже записи: `CNAME` і часто ще `TXT`.
-2. Домен куплено на **Porkbun**, DNS теж там (Cloudflare не потрібен).
-   porkbun.com → **Account → Domain Management** → біля домену **DNS**:
-   - видаліть записи-«паркування» Porkbun: `ALIAS` з порожнім Host і `CNAME` з Host `*`
-     (обидва ведуть на `pixie.porkbun.com`);
-   - додайте: Type **ALIAS**, Host порожній, Answer — значення CNAME з Railway → Add.
-     (Porkbun не дозволяє CNAME на «голий» домен, ALIAS робить те саме);
-   - якщо Railway дав `TXT` — Type `TXT`, Host і Answer як у Railway.
-   > Якщо в **Authoritative Nameservers** домену стоять сервери Cloudflare, а не Porkbun —
-   > записи додаються в Cloudflare (`CNAME @`, сіра хмаринка «DNS only»).
-3. **www** (за бажанням): у Railway ще один Custom Domain `www.ДОМЕН` і в Porkbun запис
-   `CNAME`, Host `www`, Answer — з Railway.
-4. Зачекайте, поки в Railway біля домену з'явиться зелена галочка (зазвичай 5–30 хв).
-   HTTPS-сертифікат робиться сам. Хмаринку на «Proxied» не вмикайте.
-
-## 9. Бот: перехід зі старого
-
-Якщо `@Drdadvanibot` досі працює в конструкторі (або на іншому сервері):
-
-1. Заздалегідь збережіть скриншоти меню й відповідей старого бота, якщо щось треба перенести.
-2. **Одразу після кроку 7** відключіть бота в конструкторі (видаліть інтеграцію/токен).
-   Наш сервер знімає чужий webhook сам, але старий сервіс може повісити його назад.
-3. Прибрати старі меню й описи та виставити наші. На Mac розробника, у `server/.env`
-   **тимчасово** впишіть робочий токен і запустіть:
-   ```bash
-   cd server
-   npm run bot:setup -- --dry
-   npm run bot:setup -- --name
-   ```
-   Потім **поверніть** у `server/.env` токен dev-бота. Локальний сервер із робочим токеном не запускайте.
-4. Аватар змінюється в @BotFather (`/setuserpic`) з Telegram власника.
-5. Підписку конструктора скасовуйте лише тоді, коли переконалися, що новий бот відповідає.
-
-## 10. Перший вхід і перевірка
-
-1. `https://ДОМЕН/admin` → вхід з `OWNER_USERNAME` / `OWNER_PASSWORD`.
-2. **Профіль клініки** — справжні телефон, Telegram, адреса.
-3. **Лікар** у `@Drdadvanibot`: **Start** → `/bind ПАРОЛЬ_ВІД_АДМІНКИ`.
-   Тепер записи приходять йому в Telegram.
-4. Повторити `npm run bot:setup` (як у кроці 9.3, з тимчасовим токеном) — у меню лікаря з'являться `/add`, `/slots`.
-5. Лікар додає вільні години: `/add` у боті або **Доступність** в адмінці.
-6. Пробний запис зі свого телефону на сайті → підтвердити в боті → лікар підтверджує →
-   перевірити, що запис з'явився в Google Calendar → скасувати.
-7. Киньте посилання на сайт у «Збережене» в Telegram — має бути прев'ю з фото лікаря.
+| Що | Де | Чий акаунт |
+|---|---|---|
+| Код | GitHub `maulluv/Tangiz`, гілка `main` | розробника |
+| Сервер + база | Railway, сервіс `Tangiz` + диск `tangiz-volume` (`/data`) | розробника (Hobby) |
+| Домен `drtengizdadvani.com` | куплено на Porkbun | власника |
+| DNS домену | **Cloudflare** (NS у Porkbun вказують на Cloudflare) | власника |
+| Telegram-бот | @BotFather | власника (робочий), розробника (тестовий) |
 
 ---
 
 ## Оновлення сайту
 
-Злити зміни в `main`, перейти на неї (`git checkout main && git pull`) і запустити `railway up`.
-База на `/data` не зачіпається, зміни структури бази застосовуються автоматично.
+Злити зміни в `main` (PR на GitHub) — Railway сам перезбере й перезапустить за 3–5 хв.
+База на `/data` не зачіпається, міграції бази застосовуються автоматично при старті.
 
-## Резервні копії
+Перевірка після оновлення: Railway → `Tangiz` → **Deployments** → останній → **View logs**:
+`🚀 TENGIZ API …` і `🤖 Telegram-бот @… запущено.`
 
-Railway → Volume → вкладка **Backups** — увімкніть розклад, якщо вкладка доступна на тарифі.
-Уся база — один файл `/data/tangiz.db`.
+---
+
+## Як це налаштовано (якщо треба повторити з нуля)
+
+### 1. Сервіс
+1. railway.com → **New → GitHub Repository** → `maulluv/Tangiz`
+   (якщо репозиторію немає в списку — **Configure GitHub App** → дати доступ до `Tangiz`).
+2. Сервіс → **Settings**:
+   - **Source → Branch:** `main`;
+   - **Build → Custom Build Command:** `npm run build && npm ci --prefix server`;
+   - **Deploy → Custom Start Command:** `npm --prefix server run start:prod`;
+   - **Deploy → Healthcheck Path:** `/api/health`;
+   - **Scale → Region:** EU West (Amsterdam) — ближче до України.
+
+   > Файл `railway.json` (Config as Code) Railway більше не підтримує для нових сервісів,
+   > тому команди задано вручну в налаштуваннях.
+3. Правою кнопкою на сервіс → **Attach volume** → Mount path `/data`.
+
+### 2. Змінні (сервіс → Variables → Raw Editor)
+```
+DATABASE_URL=file:/data/tangiz.db
+JWT_SECRET=<openssl rand -base64 48>
+TELEGRAM_BOT_TOKEN=<токен бота з @BotFather>
+OWNER_USERNAME=<логін адмінки>
+OWNER_PASSWORD=<пароль адмінки, від 8 символів>
+VITE_SITE_URL=https://drtengizdadvani.com
+CLINIC_TZ=Europe/Kyiv
+BOOKING_CONFIRM_MIN=30
+FOLLOWUP_DAYS=7
+```
+- `PORT` не задавати — Railway ставить сам (зараз 8080).
+- `OWNER_USERNAME`/`OWNER_PASSWORD` спрацьовують лише при першому запуску з порожньою базою.
+- `VITE_SITE_URL` вшивається в сайт під час збірки (прев'ю посилань). Змінили — **Redeploy**.
+- Секрети нікуди не пересилати й не показувати на скрінах.
+
+### 3. Домен
+1. Railway → сервіс → **Settings → Networking → Custom Domain** → `drtengizdadvani.com`, порт `8080`.
+   Те саме для `www.drtengizdadvani.com`.
+2. Railway показує записи `CNAME` і `TXT` — їх додати в **Cloudflare** (dash.cloudflare.com →
+   домен → **DNS → Records**):
+   - `CNAME`, Name `@` (або `www`), Target — з Railway, **Proxy status: DNS only** (сіра хмаринка);
+   - `TXT`, Name `_railway-verify` (або як дав Railway), Content — з Railway.
+3. Через 5–30 хв у Railway біля домену зелена галочка, HTTPS видається сам.
+
+> Записи в DNS-розділі самого Porkbun **ні на що не впливають**, поки NS домену — Cloudflare.
+
+### 4. Railway: тариф і захист
+- **Plans → Hobby** (без нього сервер зупиняється після пробного періоду).
+- **Usage → Usage limits:** Compute hard limit `$20`, email alert `$8`.
+- Сервіс → **Backups** → розклад Daily.
+
+---
+
+## Telegram-бот
+
+Зараз на сервері — **тестовий** бот `@tangiz_dev_dan_bot`.
+⚠️ Один токен працює лише в одному місці: поки бот на сервері, не запускайте локальний
+`npm run dev` з тим самим токеном (для локальної роботи — окремий бот у `server/.env`).
+
+### Перехід на робочий `@Drdadvanibot`
+1. З Telegram власника: @BotFather → `/mybots` → `@Drdadvanibot` → **API Token**.
+2. Railway → Variables → `TELEGRAM_BOT_TOKEN` → новий токен → **Deploy**.
+3. Одразу відключити бота в старому конструкторі (видалити інтеграцію/токен).
+4. Тексти й меню бота: на Mac **тимчасово** вписати робочий токен у `server/.env` і запустити
+   ```bash
+   cd server
+   npm run bot:setup -- --dry
+   npm run bot:setup -- --name
+   ```
+   потім повернути в `server/.env` локальний токен.
+5. Лікар у `@Drdadvanibot`: **Start** → `/bind ПАРОЛЬ_АДМІНКИ`. Потім ще раз `bot:setup` —
+   у меню лікаря з'являться `/add`, `/slots`.
+6. Аватар — @BotFather `/setuserpic` з Telegram власника.
+7. Підписку конструктора скасувати, коли переконалися, що новий бот відповідає.
+
+Записи, слоти й відгуки лишаються (вони в базі). Пацієнти старого бота отримуватимуть
+повідомлення від нового лише після того, як натиснуть у ньому Start.
+
+---
+
+## Google Calendar (ще не підключено)
+
+1. **Власник:** console.cloud.google.com → **New Project** `TENGIZ` → увімкнути **Google Calendar API**.
+2. **IAM & Admin → Service Accounts → Create** `tengiz-calendar` → **Keys → Add key → JSON**.
+3. calendar.google.com → ⚙️ → свій календар → **Доступ для окремих користувачів** → email
+   сервісного акаунта → право **«Вносити зміни в події»**.
+4. Ключ в один рядок: `base64 -i ~/Downloads/КЛЮЧ.json | tr -d '\n' | pbcopy`, JSON-файл видалити.
+5. Railway → Variables: `GOOGLE_SERVICE_ACCOUNT=<рядок>`, `GOOGLE_CALENDAR_ID=<gmail лікаря>` → Deploy.
+   У логах: `📅 Google Calendar: …`.
+
+---
+
+## Перший вхід
+
+1. `https://drtengizdadvani.com/admin` → логін і пароль адмінки.
+2. **Профіль клініки** — справжні телефон, Telegram, адреса.
+3. Бот: **Start** → `/bind ПАРОЛЬ_АДМІНКИ`, вільні години — `/add` або **Доступність** в адмінці.
+4. Пробний запис з телефона → підтвердити в боті → лікар підтверджує → скасувати.
