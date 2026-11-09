@@ -14,13 +14,13 @@
 
 ## 1. Домен
 
-1. Купіть домен, напр. `tengiz.com.ua` (або `.com`). Українські реєстратори: **nic.ua**, **imena.ua**,
-   **hostiq.ua**. `.com.ua` реєструється вільно; `.ua` без «com» вимагає торговельну марку.
-2. **DNS — через Cloudflare (безкоштовно).** Railway дає запис типу CNAME, а для «голого» домену
-   (`tengiz.com.ua` без `www`) DNS більшості реєстраторів його не підтримує. Cloudflare — підтримує.
-   - Зареєструйтеся на cloudflare.com → **Add a domain** → тариф **Free**.
-   - Cloudflare покаже два NS-сервери — впишіть їх у кабінеті реєстратора замість його власних
-     (розділ «DNS-сервери» / «NS»). Оновлення займає від кількох хвилин до доби.
+Домен куплено в **Cloudflare Registrar** (там само, де Syndicate), тож DNS уже на Cloudflare:
+NS-сервери міняти не треба, а CNAME на «голий» домен Cloudflare підтримує.
+Сайт хоститься **не** на Cloudflare (Workers не тримають постійний процес і файл бази), а на Railway.
+Cloudflare лише направляє домен туди (крок 4).
+
+> Якщо колись домен буде в іншого реєстратора: додайте його в Cloudflare (**Add a domain → Free**)
+> і впишіть у реєстратора два NS-сервери, які покаже Cloudflare.
 
 ## 2. Telegram-бот для робочого сайту
 
@@ -91,10 +91,16 @@
 
 ## 4. Підключити домен
 
-1. Railway: **Settings → Networking → Custom Domain** → `tengiz.com.ua`. Railway покаже CNAME-запис.
-2. Cloudflare → **DNS → Add record**: тип `CNAME`, ім'я `@`, значення — з Railway,
-   **Proxy status: DNS only** (сіра хмаринка). Те саме для `www`, якщо треба.
-3. Зачекайте, поки Railway покаже галочку біля домену (HTTPS-сертифікат робиться сам).
+1. Railway: **Settings → Networking → Custom Domain** → ваш домен (без `www`). Якщо питає порт —
+   залиште той, що він пропонує. Railway покаже записи: `CNAME` і часто ще `TXT` (`_railway-verify…`).
+2. Cloudflare → домен → **DNS → Records → Add record** — додайте **кожен** запис, який показав Railway:
+   - `CNAME`, Name `@`, Target — з Railway, **Proxy status: DNS only** (сіра хмаринка);
+   - `TXT`, якщо Railway його дав — Name і Content як є.
+   Якщо в DNS уже є старі `A`/`AAAA`/`CNAME` для `@` (напр. «паркування» від реєстратора) — видаліть їх.
+3. `www`: додайте в Railway другий Custom Domain `www.ваш-домен` і так само його CNAME у Cloudflare
+   (DNS only). Або без `www` зовсім — теж нормально.
+4. Зачекайте, поки Railway покаже зелену галочку біля домену (5–30 хв, HTTPS-сертифікат робиться сам).
+   ⚠️ Хмаринку не вмикайте (не «Proxied»), поки Railway не видав сертифікат, інакше перевірка не пройде.
 
 ## 5. Перший запуск
 
