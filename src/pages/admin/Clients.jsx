@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button, Card, Modal, StatusBadge } from "@/components/ui";
 import { PlusIcon } from "@/components/icons";
 import {
@@ -27,7 +28,16 @@ export default function Clients() {
   const [clients, setClients] = useState([]);
   const [appts, setAppts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
+  // ?q= приходить із пошуку в шапці адмінки.
+  const [params, setParams] = useSearchParams();
+  const [query, setQuery] = useState(() => params.get("q") ?? "");
+  useEffect(() => {
+    const q = params.get("q");
+    if (q !== null) {
+      setQuery(q);
+      setParams({}, { replace: true }); // прибираємо з адреси, щоб далі поле жило своїм життям
+    }
+  }, [params, setParams]);
   const [detailId, setDetailId] = useState(null);
   const [formClient, setFormClient] = useState(null); // null | {} (new) | client (edit)
 
@@ -53,12 +63,14 @@ export default function Clients() {
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
+    // Телефон шукаємо за цифрами: «067 123», «+380 67 123» і «67123» знайдуть той самий номер.
+    const qd = q.replace(/\D/g, "").replace(/^(380|0)/, "");
     return clients
       .filter(
         (c) =>
           !q ||
           c.name.toLowerCase().includes(q) ||
-          (c.phone || "").toLowerCase().includes(q) ||
+          (qd.length >= 3 && (c.phone || "").replace(/\D/g, "").includes(qd)) ||
           (c.telegram || "").toLowerCase().includes(q),
       )
       .map((c) => ({ ...c, stats: clientStats(c.id, appts) }));
@@ -194,6 +206,9 @@ function ClientCard({ client, appts, onClose, onEdit }) {
 
           <div className="text-sm text-muted">
             {t("clients.since")}: {dateLong(client.createdAt)}
+            {stats.noShows > 0 && (
+              <span className="text-orange-700"> · {t("clientCard.noShows", { n: stats.noShows })}</span>
+            )}
           </div>
 
           <div>

@@ -46,7 +46,12 @@ export function AuthProvider({ children }) {
         localStorage.setItem(USER_KEY, JSON.stringify(u));
         setUser(u);
       })
-      .catch(() => signOut()); // токен протух/недійсний — виходимо
+      .catch((err) => {
+        // Виходимо, лише коли сервер прямо каже, що сесія недійсна (401/403). Якщо сервер
+        // недоступний чи перезапускається (мережа, 5xx) — лишаємо сесію: інакше лікаря
+        // викидало б з адмінки після кожного деплою чи збою зв'язку.
+        if (err.status === 401 || err.status === 403) signOut();
+      });
   }, []);
 
   const value = useMemo(() => {

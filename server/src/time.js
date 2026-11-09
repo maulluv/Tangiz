@@ -65,3 +65,21 @@ export function formatTime(d, lang = "uk") {
     timeZone: CLINIC_TZ,
   });
 }
+
+// "пн, 10.11" — короткий підпис дня на кнопках вибору дати в боті.
+export function formatDayShort(d, lang = "uk") {
+  const date = new Date(d);
+  const wd = date.toLocaleString(locale(lang), { weekday: "short", timeZone: CLINIC_TZ });
+  const dm = date.toLocaleString(locale(lang), { day: "2-digit", month: "2-digit", timeZone: CLINIC_TZ });
+  return `${wd}, ${dm}`;
+}
+
+// Ключ дня в поясі клініки: "20261110". Процес уже живе в CLINIC_TZ (див. вище),
+// тож локальні getFullYear/getMonth/getDate — це саме день у клініці.
+export function dayKey(d) {
+  const x = new Date(d);
+  return `${x.getFullYear()}${String(x.getMonth() + 1).padStart(2, "0")}${String(x.getDate()).padStart(2, "0")}`;
+}
+
+// Година доби в клініці (0–23) — щоб не писати пацієнтам уночі.
+export const clinicHour = (d = new Date()) => new Date(d).getHours();

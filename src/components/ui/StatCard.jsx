@@ -2,7 +2,7 @@ import { cn } from "@/utils/cn";
 import { useI18n } from "@/i18n";
 import { Card } from "./Card";
 
-export function StatCard({ label, value, delta, icon }) {
+export function StatCard({ label, value, delta, hint, icon }) {
   const { t } = useI18n();
   const positive = delta?.startsWith("+");
   return (
@@ -22,6 +22,7 @@ export function StatCard({ label, value, delta, icon }) {
           {delta} <span className="text-muted">{t("dash.perMonth")}</span>
         </div>
       )}
+      {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}
     </Card>
   );
 }

@@ -10,15 +10,18 @@ import { notifyClientBookingStatus } from "../bot.js";
 const router = Router();
 router.use(requireAuth, requireOwner);
 
-const STATUSES = ["pending", "confirmed", "completed", "canceled"];
+const STATUSES = ["pending", "confirmed", "completed", "canceled", "no_show"];
 
-// Дозволені переходи статусу (ті самі, що й кнопки в адмінці). Скасований чи завершений
-// запис назад не повертаємо: слот скасованого вже міг зайняти інший пацієнт.
+// Дозволені переходи статусу (ті самі, що й кнопки в адмінці). Скасований запис назад
+// не повертаємо: його слот уже міг зайняти інший пацієнт.
+// no_show — «не прийшов»: минулий запис, на який пацієнт не з'явився. «Відбувся» і
+// «не прийшов» можна міняти місцями — щоб лікар виправив помилкове натискання.
 const TRANSITIONS = {
   pending_client: ["canceled"],
-  pending: ["confirmed", "completed", "canceled"],
-  confirmed: ["completed", "canceled"],
-  completed: [],
+  pending: ["confirmed", "completed", "canceled", "no_show"],
+  confirmed: ["completed", "canceled", "no_show"],
+  completed: ["no_show"],
+  no_show: ["completed"],
   canceled: [],
 };
 
@@ -67,6 +70,9 @@ router.patch(
     if (status !== booking.status && !TRANSITIONS[booking.status]?.includes(status)) {
       return res.status(409).json({ error: "Такий перехід статусу неможливий." });
     }
+    if (status === "no_show" && booking.date > new Date()) {
+      return res.status(409).json({ error: "Неявку можна позначити лише після часу прийому." });
+    }
 
     if (status === "canceled") {
       await cancelBooking(booking.id); // звільняє слот і відв'язує його від запису
@@ -75,7 +81,10 @@ router.patch(
     }
     // Пацієнту пишемо про підтвердження/скасування — так само, як із кнопок у боті
     // (сам notifyClientBookingStatus мовчить, якщо статус інший або бот вимкнено).
-    if (status !== booking.status) {
+    // Минулий запис, позначений «не відбувся», пацієнту не пишемо — «ваш запис скасовано»
+    // про вчорашній прийом лише збентежить.
+    const pastCancel = status === "canceled" && booking.date < new Date();
+    if (status !== booking.status && !pastCancel) {
       notifyClientBookingStatus(booking.id, status).catch((e) =>
         console.error("Не вдалося сповістити пацієнта:", e.message),
       );
@@ -198,6 +207,26 @@ router.patch(
 );
 
 // --- Відгуки (модерація) ----------------------------------------------
+
+// Усі відгуки для сторінки «Відгуки» в адмінці — з джерелом (сайт / Telegram) і датою.
+router.get(
+  "/reviews",
+  asyncHandler(async (req, res) => {
+    const list = await prisma.review.findMany({ orderBy: { createdAt: "desc" } });
+    res.json(
+      list.map((r) => ({
+        id: r.id,
+        name: r.name,
+        rating: r.rating,
+        serviceId: r.serviceId,
+        text: r.textUk,
+        source: r.source,
+        published: r.published,
+        createdAt: r.createdAt,
+      })),
+    );
+  }),
+);
 
 // Видалити відгук (чистка спаму).
 router.delete(

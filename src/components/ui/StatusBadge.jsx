@@ -8,6 +8,8 @@ const statusCls = {
   confirmed: "bg-brand-50 text-brand-700 ring-brand-100",
   completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   canceled: "bg-red-50 text-red-700 ring-red-200",
+  // Пацієнт не прийшов на прийом (минулий запис).
+  no_show: "bg-orange-50 text-orange-700 ring-orange-200",
 };
 
 export function StatusBadge({ status }) {

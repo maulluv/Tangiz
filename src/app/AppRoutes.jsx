@@ -18,6 +18,7 @@ import Pending from "@/pages/admin/Pending";
 import Availability from "@/pages/admin/Availability";
 import Calendar from "@/pages/admin/Calendar";
 import Settings from "@/pages/admin/Settings";
+import AdminReviews from "@/pages/admin/Reviews";
 
 export default function AppRoutes() {
   return (
@@ -45,6 +46,7 @@ export default function AppRoutes() {
           <Route path="pending" element={<Pending />} />
           <Route path="availability" element={<Availability />} />
           <Route path="calendar" element={<Calendar />} />
+          <Route path="reviews" element={<AdminReviews />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Route>

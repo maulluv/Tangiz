@@ -201,6 +201,7 @@ export default function Reviews() {
               required
               autoFocus
               rows={4}
+              maxLength={2000}
               value={text}
               onChange={(e) => setText(e.target.value)}
               className={cn(inputCls, "resize-none")}

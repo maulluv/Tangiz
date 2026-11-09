@@ -1,4 +1,4 @@
-// Схема бази даних TANGIZ.
+// Схема бази даних TENGIZ.
 // Тут описано ВСІ сутності системи — Prisma із цього створює таблиці й типобезпечні
 // запити. Одна БД спільна для сайту й (згодом) Telegram-бота.
 //
@@ -70,7 +70,7 @@ model Booking {
   date           DateTime
   durationMin    Int
   price          Int
-  status         String    @default("pending") // pending_client | pending | confirmed | completed | canceled
+  status         String    @default("pending") // pending_client | pending | confirmed | completed | no_show | canceled
   // Запис із сайту спершу чекає, поки пацієнт підтвердить його в Telegram-боті (pending_client);
   // весь цей час слот тримається за ним. Минув holdUntil без підтвердження —
   // прибиральник (src/holds.js) скасовує запис і повертає слот у вільні.
@@ -79,7 +79,14 @@ model Booking {
   // Коли клієнту надіслано нагадування (щоб не надіслати те саме двічі). null — ще не слали.
   remindedDayAt  DateTime? // за добу до візиту
   reminderSentAt DateTime? // за годину до візиту
+  // Коли пацієнту надіслано питання від лікаря «як ви після прийому?» (через FOLLOWUP_DAYS днів).
+  followUpSentAt DateTime?
+  // Google Calendar лікаря (src/gcal.js): id події в календарі та коли її востаннє
+  // звірено із записом. updatedAt > gcalSyncedAt — подію треба оновити.
+  gcalEventId    String?
+  gcalSyncedAt   DateTime?
   createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
 
   @@index([status, date])
 }
@@ -93,6 +100,7 @@ model Review {
   textUk    String
   textEn    String
   published Boolean  @default(true) // згодом можна вмикати модерацію
+  source    String   @default("site") // site | telegram — де залишено відгук
   createdAt DateTime @default(now())
 }
 

@@ -7,7 +7,8 @@ import { cn } from "@/utils/cn";
 const variants = {
   primary:
     "border-transparent bg-brand-500 text-white shadow-[var(--shadow-brand)] hover:bg-brand-600 hover:-translate-y-0.5 active:translate-y-0",
-  ghost: "border-transparent text-ink hover:bg-black/5",
+  // Без власного кольору тексту (успадковує ink від body) — щоб className="text-danger" працював.
+  ghost: "border-transparent hover:bg-black/5",
   outline:
     "border-border bg-surface text-ink hover:border-brand-200 hover:bg-brand-50/40 hover:-translate-y-0.5 active:translate-y-0",
   danger: "border-transparent bg-danger text-white hover:bg-red-700",

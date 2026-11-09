@@ -18,6 +18,7 @@ const dotCls = {
   confirmed: "bg-brand-500",
   completed: "bg-emerald-500",
   canceled: "bg-red-400",
+  no_show: "bg-orange-400",
 };
 
 const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;

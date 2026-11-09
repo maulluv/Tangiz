@@ -45,7 +45,7 @@ router.patch(
       update: data,
       create: {
         id: 1,
-        name: data.name || "TANGIZ",
+        name: data.name || "TENGIZ",
         doctorName: data.doctorName || "",
         phone: data.phone || "",
         telegram: data.telegram || "",

@@ -56,3 +56,35 @@ export async function deleteFreeSlot(id) {
   await prisma.slot.delete({ where: { id } });
   return { ok: true };
 }
+
+// Зайняти вільний слот записом — спільно для сайту (routes/bookings.js) і бота.
+// Слот «захоплюємо» умовним updateMany (booked: false → true) в одній транзакції зі
+// створенням запису: двоє, що натиснули одночасно, не отримають той самий час.
+// Повертає запис або null, якщо слот уже зайняли (чи він минув).
+// data — поля Booking без slot/service-похідних: userId, clientName, status, holdUntil, source.
+export async function bookSlot(slotId, data) {
+  const slot = await prisma.slot.findUnique({ where: { id: slotId }, include: { service: true } });
+  if (!slot || slot.booked || slot.startsAt.getTime() <= Date.now() || !slot.service?.active) return null;
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const { count } = await tx.slot.updateMany({ where: { id: slot.id, booked: false }, data: { booked: true } });
+      if (!count) throw new SlotTaken();
+      return tx.booking.create({
+        data: {
+          ...data,
+          serviceId: slot.serviceId,
+          slotId: slot.id,
+          date: slot.startsAt,
+          // Ціну й тривалість — з БД, а не від клієнта.
+          durationMin: slot.service.durationMin,
+          price: slot.service.price,
+        },
+      });
+    });
+  } catch (e) {
+    // P2002 по slotId — слот уже прив'язаний до іншого запису.
+    if (e instanceof SlotTaken || e.code === "P2002") return null;
+    throw e;
+  }
+}
+class SlotTaken extends Error {}

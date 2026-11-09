@@ -153,3 +153,26 @@ export const PlayIcon = (p) => (
     <path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none" />
   </svg>
 );
+
+export const SearchIcon = (p) => (
+  <svg {...base(p)}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
+
+// Вхідні — для черги «Очікують».
+export const InboxIcon = (p) => (
+  <svg {...base(p)}>
+    <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+    <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+  </svg>
+);
+
+// Повідомлення з зірочкою — для сторінки відгуків в адмінці.
+export const ReviewIcon = (p) => (
+  <svg {...base(p)}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    <path d="m12 6.8 1.1 2.2 2.4.35-1.75 1.7.4 2.4L12 12.3l-2.15 1.15.4-2.4-1.75-1.7 2.4-.35z" />
+  </svg>
+);

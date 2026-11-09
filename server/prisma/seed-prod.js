@@ -49,7 +49,7 @@ async function main() {
   await prisma.clinicProfile.upsert({
     where: { id: 1 },
     update: {},
-    create: { id: 1, name: "TANGIZ", doctorName: "Тенгіз Дадвані", phone: "", telegram: "@Drdadvanibot", address: "Київ" },
+    create: { id: 1, name: "TENGIZ", doctorName: "Тенгіз Дадвані", phone: "", telegram: "@Drdadvanibot", address: "Київ" },
   });
 
   // Відгуки — лише в порожню базу, щоб не дублювати й не повертати видалені.
