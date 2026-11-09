@@ -6,7 +6,7 @@
 **Porkbun** (де куплено домен) лише направляє домен на Railway. Cloudflare тут не потрібен,
 а Cloudflare Workers не тримають постійний процес і файл бази.
 
-Railway, Cloudflare, Google і Telegram-бот належать **власнику** (лікарю). Код лишається
+Railway, домен (Porkbun), Google і Telegram-бот належать **власнику** (лікарю). Код лишається
 в GitHub розробника, а на Railway викладається командою `railway up` з Mac розробника
 (як `wrangler deploy` у Syndicate).
 
@@ -17,7 +17,7 @@ Railway, Cloudflare, Google і Telegram-бот належать **власник
 ## 0. Що підготувати
 
 - [ ] Доступ до пошти власника (Gmail) — туди приходять підтвердження.
-- [ ] Акаунти власника на **Railway** (з карткою для Hobby) і **Cloudflare** (з доменом).
+- [ ] Акаунти власника на **Railway** (з карткою для Hobby) і **Porkbun** (з доменом).
 - [ ] Telegram власника — той, що є власником бота `@Drdadvanibot` у @BotFather.
 - [ ] Mac розробника з проєктом (для генерації секретів і налаштування бота).
 
